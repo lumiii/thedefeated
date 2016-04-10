@@ -195,7 +195,12 @@ public class MinimaxGamer extends SampleGamer {
 	}
 
 	private void setTimeout(long timeout) {
-		endTime = timeout - TIME_BUFFER;
+		if (timeout != 0){
+			endTime = timeout - TIME_BUFFER;
+		}
+		else {
+			endTime = 0;
+		}
 	}
 
 	private boolean isTimeout() {
