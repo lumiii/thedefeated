@@ -15,7 +15,7 @@ import org.ggp.base.util.statemachine.exceptions.TransitionDefinitionException;
 
 public class MinimaxGamer extends SampleGamer {
 
-	// amount of time to
+	// amount of time to buffer before the timeout
 	private static final long TIME_BUFFER = 3000;
 	private static final int MAX_DEFAULT = 0;
 	private static final int MIN_DEFAULT = 100;
@@ -161,15 +161,13 @@ public class MinimaxGamer extends SampleGamer {
 			throw new ArrayIndexOutOfBoundsException("Unexpected: more than 2 players");
 		}
 
-		Role opponent = null;
 		for (Role role : roles) {
 			if (!role.equals(getRole())) {
-				opponent = role;
-				break;
+				return role;
 			}
 		}
 
-		return opponent;
+		return null;
 	}
 
 	private List<Move> getOrderedMoves(Move move, Role moveOwner, MachineState currentState) throws MoveDefinitionException {
@@ -206,6 +204,7 @@ public class MinimaxGamer extends SampleGamer {
 	private boolean isTimeout() {
 		Date now = new Date();
 		long nowTime = now.getTime();
+
 		return nowTime >= endTime;
 	}
 }
