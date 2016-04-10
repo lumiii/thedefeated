@@ -1,6 +1,8 @@
 package org.ggp.base.player.gamer.statemachine.sample;
 
+import java.util.AbstractMap.SimpleImmutableEntry;
 import java.util.ArrayList;
+import java.util.Date;
 import java.util.List;
 
 import org.ggp.base.util.statemachine.MachineState;
@@ -13,27 +15,53 @@ import org.ggp.base.util.statemachine.exceptions.TransitionDefinitionException;
 
 public class MinimaxGamer extends SampleGamer {
 
+	// amount of time to
+	private static final long TIME_BUFFER = 3000;
+	private static final int MAX_DEFAULT = 0;
+	private static final int MIN_DEFAULT = 100;
+	private long endTime = 0;
+
 	@Override
 	public Move stateMachineSelectMove(long timeout)
 			throws TransitionDefinitionException, MoveDefinitionException, GoalDefinitionException {
 
+		Move selectMove = null;
+		setTimeout(timeout);
+
+		MachineState currentState = getCurrentState();
+		List<Move> moves = getStateMachine().findLegals(getRole(), currentState);
+		// skip processing if there are no options
+		if (moves.size() == 1) {
+			selectMove = moves.get(0);
+		}
+		else {
+			SimpleImmutableEntry<Move, Integer> bestMove = getMaxMove(currentState);
+			selectMove = bestMove.getKey();
+		}
+
+		setTimeout(0);
+
+		return selectMove;
+	}
+
+	private SimpleImmutableEntry<Move, Integer> getMaxMove(MachineState currentState) throws MoveDefinitionException {
 		StateMachine stateMachine = getStateMachine();
-		List<Move> moves = stateMachine.findLegals(getRole(), getCurrentState());
+		List<Move> moves = stateMachine.findLegals(getRole(), currentState);
 
-		int maxScore = 0;
-		Move bestMove = stateMachine.findLegalx(getRole(), getCurrentState());
+		int maxScore = MAX_DEFAULT;
+		Move bestMove = stateMachine.findLegalx(getRole(), currentState);
 		for (Move move : moves) {
-			List<Move> nextMoves = getOrderedMoves(move, getCurrentState(), true);
+			List<Move> nextMoves = getOrderedMoves(move, getRole(), currentState);
 
-			MachineState nextState;
+			MachineState nextState = null;
 			try {
-				nextState = stateMachine.findNext(nextMoves, getCurrentState());
+				nextState = stateMachine.findNext(nextMoves, currentState);
 			} catch (TransitionDefinitionException e1) {
 				e1.printStackTrace();
 				continue;
 			}
 
-			int nextScore;
+			int nextScore = MAX_DEFAULT;
 			try {
 				nextScore = getMinScore(nextState);
 
@@ -50,28 +78,56 @@ public class MinimaxGamer extends SampleGamer {
 			}
 		}
 
-		if (bestMove.toString() != "noop") {
-			System.out.println("Returning " + bestMove);
-		}
+		SimpleImmutableEntry<Move, Integer> maxMove = new SimpleImmutableEntry<Move, Integer>(bestMove, maxScore);
 
-		return bestMove;
+		return maxMove;
 	}
 
 	private int getMaxScore(MachineState currentState) throws MoveDefinitionException, GoalDefinitionException {
+		if (isTimeout()) {
+			System.out.println("Out of time, playing best guess.");
+			return MAX_DEFAULT;
+		}
+
 		StateMachine stateMachine = getStateMachine();
 
+		int maxScore = MAX_DEFAULT;
+
 		if (stateMachine.findTerminalp(currentState)) {
-			int maxScore = stateMachine.findReward(getRole(), currentState);
-			return maxScore;
+			maxScore = stateMachine.findReward(getRole(), currentState);
 		}
 		else {
-			List<Move> moves = stateMachine.findLegals(getRole(), currentState);
+			SimpleImmutableEntry<Move, Integer> maxMove = getMaxMove(currentState);
+			maxScore = maxMove.getValue();
+		}
 
-			int maxScore = 0;
+		return maxScore;
+	}
+
+
+
+	private int getMinScore(MachineState currentState) throws GoalDefinitionException, MoveDefinitionException {
+		if (isTimeout()) {
+			System.out.println("Out of time, playing best guess.");
+			return MIN_DEFAULT;
+		}
+
+		StateMachine stateMachine = getStateMachine();
+
+		Role opponent = getOpponent();
+
+		if (stateMachine.findTerminalp(currentState)) {
+			int minScore = stateMachine.findReward(getRole(), currentState);
+			return minScore;
+		}
+		else {
+			List<Move> moves = stateMachine.findLegals(opponent, currentState);
+
+			int minScore = MIN_DEFAULT;
 			for (Move move : moves) {
-				List<Move> nextMoves = getOrderedMoves(move, currentState, true);
+				List<Move> nextMoves = getOrderedMoves(move, opponent, currentState);
 
-				MachineState nextState;
+				MachineState nextState = null;
 				try {
 					nextState = stateMachine.findNext(nextMoves, currentState);
 				} catch (TransitionDefinitionException e1) {
@@ -79,12 +135,12 @@ public class MinimaxGamer extends SampleGamer {
 					continue;
 				}
 
-				int nextScore;
+				int nextScore = MIN_DEFAULT;
 				try {
-					nextScore = getMinScore(nextState);
+					nextScore = getMaxScore(nextState);
 
-					if (nextScore > maxScore) {
-						maxScore = nextScore;
+					if (minScore > nextScore) {
+						minScore = nextScore;
 					}
 				} catch (GoalDefinitionException e) {
 					e.printStackTrace();
@@ -95,7 +151,7 @@ public class MinimaxGamer extends SampleGamer {
 				}
 			}
 
-			return maxScore;
+			return minScore;
 		}
 	}
 
@@ -116,7 +172,7 @@ public class MinimaxGamer extends SampleGamer {
 		return opponent;
 	}
 
-	private List<Move> getOrderedMoves(Move move, MachineState currentState, boolean isOwnMove) throws MoveDefinitionException {
+	private List<Move> getOrderedMoves(Move move, Role moveOwner, MachineState currentState) throws MoveDefinitionException {
 		StateMachine stateMachine = getStateMachine();
 		List<Role> roles = stateMachine.findRoles();
 
@@ -126,75 +182,25 @@ public class MinimaxGamer extends SampleGamer {
 
 		List<Move> moves = new ArrayList<Move>();
 
-		Role ownRole = getRole();
 		for (Role role : roles) {
-			if (ownRole.equals(role)) {
-				if (isOwnMove) {
-					moves.add(move);
-				}
-				else {
-					moves.add(stateMachine.findLegalx(getRole(), currentState));
-				}
+			if (moveOwner.equals(role)) {
+				moves.add(move);
 			}
 			else {
-				if (!isOwnMove) {
-					moves.add(move);
-				}
-				else {
-					moves.add(stateMachine.findLegalx(getOpponent(), currentState));
-				}
+				moves.add(stateMachine.findLegalx(role, currentState));
 			}
 		}
-
-
-		System.out.print(moves);
-		System.out.println("Own moves: " + isOwnMove);
 
 		return moves;
 	}
 
-	private int getMinScore(MachineState currentState) throws GoalDefinitionException, MoveDefinitionException {
-		StateMachine stateMachine = getStateMachine();
+	private void setTimeout(long timeout) {
+		endTime = timeout - TIME_BUFFER;
+	}
 
-		// TODO, find all other roles except the current
-		Role opponent = getOpponent();
-
-		if (stateMachine.findTerminalp(currentState)) {
-			int minScore = stateMachine.findReward(getRole(), currentState);
-			return minScore;
-		}
-		else {
-			List<Move> moves = stateMachine.findLegals(opponent, currentState);
-
-			int minScore = 100;
-			for (Move move : moves) {
-				List<Move> nextMoves = getOrderedMoves(move, currentState, false);
-
-				MachineState nextState;
-				try {
-					nextState = stateMachine.findNext(nextMoves, currentState);
-				} catch (TransitionDefinitionException e1) {
-					e1.printStackTrace();
-					continue;
-				}
-
-				int nextScore;
-				try {
-					nextScore = getMaxScore(nextState);
-
-					if (minScore > nextScore) {
-						minScore = nextScore;
-					}
-				} catch (GoalDefinitionException e) {
-					e.printStackTrace();
-					continue;
-				} catch (MoveDefinitionException e) {
-					e.printStackTrace();
-					continue;
-				}
-			}
-
-			return minScore;
-		}
+	private boolean isTimeout() {
+		Date now = new Date();
+		long nowTime = now.getTime();
+		return nowTime >= endTime;
 	}
 }
