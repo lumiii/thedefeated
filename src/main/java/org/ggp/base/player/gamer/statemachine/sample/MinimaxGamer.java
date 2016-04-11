@@ -35,7 +35,7 @@ public class MinimaxGamer extends SampleGamer {
 			selectMove = moves.get(0);
 		}
 		else {
-			SimpleImmutableEntry<Move, Integer> bestMove = getMaxMove(currentState);
+			SimpleImmutableEntry<Move, Integer> bestMove = getMaxMove(currentState, MAX_DEFAULT, MIN_DEFAULT);
 			selectMove = bestMove.getKey();
 		}
 
@@ -44,11 +44,10 @@ public class MinimaxGamer extends SampleGamer {
 		return selectMove;
 	}
 
-	private SimpleImmutableEntry<Move, Integer> getMaxMove(MachineState currentState) throws MoveDefinitionException {
+	private SimpleImmutableEntry<Move, Integer> getMaxMove(MachineState currentState, int alpha, int beta) throws MoveDefinitionException {
 		StateMachine stateMachine = getStateMachine();
 		List<Move> moves = stateMachine.findLegals(getRole(), currentState);
 
-		int maxScore = MAX_DEFAULT;
 		Move bestMove = stateMachine.findLegalx(getRole(), currentState);
 		for (Move move : moves) {
 			List<Move> nextMoves = getOrderedMoves(move, getRole(), currentState);
@@ -63,11 +62,15 @@ public class MinimaxGamer extends SampleGamer {
 
 			int nextScore = MAX_DEFAULT;
 			try {
-				nextScore = getMinScore(nextState);
+				nextScore = getMinScore(nextState, alpha, beta);
 
-				if (nextScore > maxScore) {
-					maxScore = nextScore;
+				if (nextScore > alpha) {
+					alpha = nextScore;
 					bestMove = move;
+				}
+				if(alpha >= beta)
+				{
+					break;
 				}
 			} catch (GoalDefinitionException e) {
 				e.printStackTrace();
@@ -78,12 +81,12 @@ public class MinimaxGamer extends SampleGamer {
 			}
 		}
 
-		SimpleImmutableEntry<Move, Integer> maxMove = new SimpleImmutableEntry<Move, Integer>(bestMove, maxScore);
+		SimpleImmutableEntry<Move, Integer> maxMove = new SimpleImmutableEntry<Move, Integer>(bestMove, alpha);
 
 		return maxMove;
 	}
 
-	private int getMaxScore(MachineState currentState) throws MoveDefinitionException, GoalDefinitionException {
+	private int getMaxScore(MachineState currentState, int alpha, int beta) throws MoveDefinitionException, GoalDefinitionException {
 		if (isTimeout()) {
 			System.out.println("Out of time, playing best guess.");
 			return MAX_DEFAULT;
@@ -97,7 +100,7 @@ public class MinimaxGamer extends SampleGamer {
 			maxScore = stateMachine.findReward(getRole(), currentState);
 		}
 		else {
-			SimpleImmutableEntry<Move, Integer> maxMove = getMaxMove(currentState);
+			SimpleImmutableEntry<Move, Integer> maxMove = getMaxMove(currentState, alpha, beta);
 			maxScore = maxMove.getValue();
 		}
 
@@ -106,7 +109,7 @@ public class MinimaxGamer extends SampleGamer {
 
 
 
-	private int getMinScore(MachineState currentState) throws GoalDefinitionException, MoveDefinitionException {
+	private int getMinScore(MachineState currentState, int alpha, int beta) throws GoalDefinitionException, MoveDefinitionException {
 		if (isTimeout()) {
 			System.out.println("Out of time, playing best guess.");
 			return MIN_DEFAULT;
@@ -123,7 +126,6 @@ public class MinimaxGamer extends SampleGamer {
 		else {
 			List<Move> moves = stateMachine.findLegals(opponent, currentState);
 
-			int minScore = MIN_DEFAULT;
 			for (Move move : moves) {
 				List<Move> nextMoves = getOrderedMoves(move, opponent, currentState);
 
@@ -137,10 +139,14 @@ public class MinimaxGamer extends SampleGamer {
 
 				int nextScore = MIN_DEFAULT;
 				try {
-					nextScore = getMaxScore(nextState);
+					nextScore = getMaxScore(nextState, alpha, beta);
 
-					if (minScore > nextScore) {
-						minScore = nextScore;
+					if (beta > nextScore) {
+						beta = nextScore;
+					}
+					if(beta <= alpha)
+					{
+						return beta;
 					}
 				} catch (GoalDefinitionException e) {
 					e.printStackTrace();
@@ -151,7 +157,7 @@ public class MinimaxGamer extends SampleGamer {
 				}
 			}
 
-			return minScore;
+			return beta;
 		}
 	}
 
