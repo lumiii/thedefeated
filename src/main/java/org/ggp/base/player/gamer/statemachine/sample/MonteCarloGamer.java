@@ -4,6 +4,7 @@ import java.util.AbstractMap.SimpleImmutableEntry;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
+import java.util.Random;
 
 import org.ggp.base.util.statemachine.MachineState;
 import org.ggp.base.util.statemachine.Move;
@@ -23,7 +24,7 @@ public class MonteCarloGamer extends SampleGamer {
 	private static final int WORST_MAX = 100;
 	private static final int WORST_MIN = 0;
 
-	private static final int DEPTH_DEFAULT = 2;
+	private static final int DEPTH_DEFAULT = 3;
 
 	private long endTime = 0;
 	private long endMetaTime = 0;
@@ -71,14 +72,19 @@ public class MonteCarloGamer extends SampleGamer {
 	public SimpleImmutableEntry<Move, Integer>montecarlo(MachineState currentState, int count) throws TransitionDefinitionException, MoveDefinitionException, GoalDefinitionException
 	{
 		StateMachine stateMachine = getStateMachine();
-		Role role = getRole();
 		int total = 0;
 		int [] theDepth = {0};
+		Role role = getRole();
+		Random rand = new Random();
 		for(int i=0; i<count; i++)
 		{
+			MachineState state = currentState;
+			while(!stateMachine.isTerminal(state)) {
+	            List<Move> moves = stateMachine.findLegals(role, state);
 
-			MachineState terminalState = stateMachine.performDepthCharge(getCurrentState(), theDepth);
-			total += stateMachine.getGoal(terminalState, role);
+	            state = stateMachine.findNext(getOrderedMoves(moves.get(rand.nextInt(moves.size())), role, state), state);
+	        }
+			total += stateMachine.findReward(role, state);
 		}
 		int score = total/ count;
 		//System.out.println("Monte Carlo score of " + score);
@@ -93,12 +99,9 @@ public class MonteCarloGamer extends SampleGamer {
 
 		StateMachine stateMachine = getStateMachine();
 
-
-
-
 		if (depth < 0) {
 			System.out.println("Hit max bottom, returning");
-			return montecarlo(currentState, 100);
+			return montecarlo(currentState, 10);
 		}
 
 		List<Move> moves = stateMachine.findLegals(getRole(), currentState);
@@ -191,9 +194,9 @@ public class MonteCarloGamer extends SampleGamer {
 
 
 			//depth--;
-			if (depth < 0) {
+			if (depth < -1) {
 				System.out.println("Hit min bottom, returning");
-				return montecarlo(currentState, 100).getValue();
+				return montecarlo(currentState, 10).getValue();
 			}
 
 			List<Move> moves = stateMachine.findLegals(opponent, currentState);
