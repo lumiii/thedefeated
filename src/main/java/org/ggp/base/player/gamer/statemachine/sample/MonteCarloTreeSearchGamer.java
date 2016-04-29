@@ -42,24 +42,15 @@ public class MonteCarloTreeSearchGamer extends SampleGamer {
 	// amount of time to buffer before the timeout
 	private static final long TIME_BUFFER = 3000;
 	private static final long META_TIME_BUFFER = 1000;
-	private static final int MAX_DEFAULT = 0;
-	private static final int MIN_DEFAULT = 100;
-	private static final int WORST_MAX = 100;
-	private static final int WORST_MIN = 0;
-
-	private static final int DEPTH_DEFAULT = 0;
+	private static final int EXPLORATION_FACTOR = 50;
 
 	private long endTime = 0;
 	private long endMetaTime = 0;
-
-	private MachineState bestState = null;
-	private int bestScore = 0;
 
 	@Override
 	public Move stateMachineSelectMove(long timeout)
 			throws TransitionDefinitionException, MoveDefinitionException, GoalDefinitionException {
 
-		Move selectMove = null;
 		setTimeout(timeout);
 
 		StateMachine stateMachine = getStateMachine();
@@ -134,7 +125,6 @@ public class MonteCarloTreeSearchGamer extends SampleGamer {
 			double newScore = selectFn(child);
 			//System.out.println(newScore);
 			if (newScore > score)
-
 			{
 				score = newScore;
 				result = child;
@@ -172,7 +162,7 @@ public class MonteCarloTreeSearchGamer extends SampleGamer {
 	}
 	private double selectFn(Node node)
 	{
-		return  (node.utility/node.visit + 50* Math.sqrt(2*Math.log(node.parent.visit)/node.visit));
+		return (node.utility/node.visit + EXPLORATION_FACTOR * Math.sqrt(2*Math.log(node.parent.visit)/node.visit));
 	}
 	private boolean isSinglePlayer() {
 		StateMachine stateMachine = getStateMachine();
@@ -196,157 +186,6 @@ public class MonteCarloTreeSearchGamer extends SampleGamer {
 		int score = total/ count;
 		System.out.println("Monte Carlo score of " + score);
 		return new SimpleImmutableEntry(currentState, score);
-	}
-
-	private SimpleImmutableEntry<Move, Integer> getMaxMove(
-			MachineState currentState,
-			int alpha,
-			int beta,
-			int depth) throws MoveDefinitionException, GoalDefinitionException, TransitionDefinitionException {
-
-		StateMachine stateMachine = getStateMachine();
-
-
-
-
-		if (depth < 0) {
-			System.out.println("Hit max bottom, returning");
-			return montecarlo(currentState, 100);
-		}
-
-		List<Move> moves = stateMachine.findLegals(getRole(), currentState);
-
-		Move bestMove = stateMachine.findLegalx(getRole(), currentState);
-		for (Move move : moves) {
-			if (isTimeout()) {
-				System.out.println("Out of time, playing best guess.");
-				break;
-			}
-			if(depth == DEPTH_DEFAULT)
-			{
-				System.out.println(move.getContents());
-			}
-			List<Move> nextMoves = getOrderedMoves(move, getRole(), currentState);
-
-			MachineState nextState = null;
-			try {
-				nextState = stateMachine.findNext(nextMoves, currentState);
-			} catch (TransitionDefinitionException e1) {
-				e1.printStackTrace();
-				continue;
-			}
-
-			int nextScore = MAX_DEFAULT;
-			try {
-				if (!isSinglePlayer()) {
-					nextScore = getMinScore(nextState, alpha, beta, depth - 1);
-				}
-				else {
-					nextScore = getMaxScore(nextState, alpha, beta, depth - 1);
-				}
-
-				if (nextScore > alpha) {
-					alpha = nextScore;
-					bestMove = move;
-				}
-
-				if(alpha >= beta)
-				{
-					break;
-				}
-			} catch (GoalDefinitionException e) {
-				e.printStackTrace();
-				continue;
-			} catch (MoveDefinitionException e) {
-				e.printStackTrace();
-				continue;
-			}
-		}
-
-		SimpleImmutableEntry<Move, Integer> maxMove = new SimpleImmutableEntry<Move, Integer>(bestMove, alpha);
-
-		return maxMove;
-	}
-
-	private int getMaxScore(
-			MachineState currentState,
-			int alpha,
-			int beta,
-			int depth) throws MoveDefinitionException, GoalDefinitionException, TransitionDefinitionException {
-		StateMachine stateMachine = getStateMachine();
-
-		int maxScore = MAX_DEFAULT;
-
-		if (stateMachine.findTerminalp(currentState)) {
-			maxScore = stateMachine.findReward(getRole(), currentState);
-		}
-		else {
-			SimpleImmutableEntry<Move, Integer> maxMove = getMaxMove(currentState, alpha, beta, depth);
-			maxScore = maxMove.getValue();
-		}
-
-		return maxScore;
-	}
-
-	private int getMinScore(MachineState currentState,
-			int alpha,
-			int beta,
-			int depth) throws GoalDefinitionException, MoveDefinitionException, TransitionDefinitionException {
-		StateMachine stateMachine = getStateMachine();
-
-		Role opponent = getOpponent();
-
-		if (stateMachine.findTerminalp(currentState)) {
-			int minScore = stateMachine.findReward(getRole(), currentState);
-			return minScore;
-		}
-		else {
-
-
-			//depth--;
-			if (depth < 0) {
-				System.out.println("Hit min bottom, returning");
-				return montecarlo(currentState, 100).getValue();
-			}
-
-			List<Move> moves = stateMachine.findLegals(opponent, currentState);
-
-			for (Move move : moves) {
-				List<Move> nextMoves = getOrderedMoves(move, opponent, currentState);
-				if (isTimeout()) {
-					System.out.println("Out of time, playing best guess.");
-					break;
-				}
-				MachineState nextState = null;
-				try {
-					nextState = stateMachine.findNext(nextMoves, currentState);
-				} catch (TransitionDefinitionException e1) {
-					e1.printStackTrace();
-					continue;
-				}
-
-				int nextScore = MIN_DEFAULT;
-				try {
-					nextScore = getMaxScore(nextState, alpha, beta, depth);
-
-					if (beta > nextScore) {
-						beta = nextScore;
-					}
-					if(beta <= alpha)
-					{
-						return beta;
-					}
-				} catch (GoalDefinitionException e) {
-					e.printStackTrace();
-					continue;
-				} catch (MoveDefinitionException e) {
-					e.printStackTrace();
-					continue;
-				}
-			}
-
-			return beta;
-		}
 	}
 
 	private Role getOpponent() {
