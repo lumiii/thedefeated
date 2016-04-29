@@ -25,14 +25,14 @@ public class BoundedDepthGamer extends SampleGamer {
 	private static final int MIN_DEFAULT = 100;
 	private static final int WORST_MAX = 0;
 	private static final int WORST_MIN = 100;
-	private static final int DEPTH_DEFAULT = 10;
+	private static final int DEPTH_DEFAULT = 7;
 
-	private boolean opponentMobilityHeuristic = false;
+	private boolean opponentMobilityHeuristic = true;
 	private long endTime = 0;
 	private long endMetaTime = 0;
 
-	private static final int MOBILITY_WEIGHT = 0;
-	private static final int GOAL_WEIGHT = 0;
+	private static final int MOBILITY_WEIGHT = 33;
+	private static final int GOAL_WEIGHT = 67;
 
 	private MachineState bestState = null;
 	private int bestScore = 0;
@@ -155,7 +155,7 @@ public class BoundedDepthGamer extends SampleGamer {
 
 		depth--;
 		if (depth < 0) {
-			System.out.println("Hit bottom, returning");
+			System.out.println("Hit max bottom, returning");
 			if (!useHeuristics()) {
 				Move defaultMove = stateMachine.findLegalx(getRole(), currentState);
 				return new SimpleImmutableEntry<Move, Integer>(defaultMove, WORST_MAX);
@@ -251,11 +251,12 @@ public class BoundedDepthGamer extends SampleGamer {
 
 			depth--;
 			if (depth < 0) {
-				System.out.println("Hit bottom, returning");
+				System.out.println("Hit min bottom, returning");
 				if (!opponentMobilityHeuristic) {
 					return WORST_MIN;
 				}
 				else {
+					System.out.println("Checking opponent mobility");
 					List<Move> moves = stateMachine.findLegals(getOpponent(), currentState);
 					List<Move> feasibleMoves = stateMachine.findActions(getOpponent());
 					int moveSize = moves.size();
