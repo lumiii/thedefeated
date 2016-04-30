@@ -104,12 +104,60 @@ public class MonteCarloTreeSearchGamer extends SampleGamer
 
 		StateMachine stateMachine = getStateMachine();
 		MachineState currentState = getCurrentState();
+
+		boolean singleMove = (stateMachine.findLegals(getRole(), currentState).size() == 1);
+
 		Node root = new Node(null, currentState, null, true);
-		if (stateMachine.findLegals(getRole(), currentState).size() == 1)
+
+		treeSearch(root);
+
+		// make sure to have at least one move to return
+		// in the case that all scores come back as 0
+		Move bestMove = stateMachine.findLegalx(getRole(), currentState);
+
+		if (!singleMove)
 		{
-			return stateMachine.findLegalx(getRole(), currentState);
+			int maxScore = 0;
+			for (Node child : root.children)
+			{
+				int score;
+				if (child.visit == 0)
+				{
+					score = 0;
+				}
+				else
+				{
+					score = child.utility / child.visit;
+				}
+				System.out.println(child.move.getContents().toString() + "," + score);
+				if (score > maxScore)
+				{
+					maxScore = score;
+					bestMove = child.move;
+				}
+			}
 		}
+
+		setTimeout(0);
+
+		return bestMove;
+	}
+
+	@Override
+	public void stateMachineMetaGame(long timeout)
+			throws TransitionDefinitionException, MoveDefinitionException, GoalDefinitionException
+	{
+		StateMachine stateMachine = getStateMachine();
+		for (int i = 0; i < workers.length; i++)
+		{
+			workers[i].setStateMachine(stateMachine);
+		}
+	}
+
+	private void treeSearch(Node root) throws MoveDefinitionException, TransitionDefinitionException {
+		StateMachine stateMachine = getStateMachine();
 		Role role = getRole();
+
 		while (!isTimeout())
 		{
 			Node node = select(root);
@@ -136,41 +184,6 @@ public class MonteCarloTreeSearchGamer extends SampleGamer
 			}
 		}
 
-		int maxScore = 0;
-		Move bestMove = null;
-		for (Node child : root.children)
-		{
-			int score;
-			if (child.visit == 0)
-			{
-				score = 0;
-			}
-			else
-			{
-				score = child.utility / child.visit;
-			}
-			System.out.println(child.move.getContents().toString() + "," + score);
-			if (score > maxScore)
-			{
-				maxScore = score;
-				bestMove = child.move;
-			}
-		}
-
-		setTimeout(0);
-
-		return bestMove;
-	}
-
-	@Override
-	public void stateMachineMetaGame(long timeout)
-			throws TransitionDefinitionException, MoveDefinitionException, GoalDefinitionException
-	{
-		StateMachine stateMachine = getStateMachine();
-		for (int i = 0; i < workers.length; i++)
-		{
-			workers[i].setStateMachine(stateMachine);
-		}
 	}
 
 	private void startDepthCharges(MachineState machineState, Role role)
