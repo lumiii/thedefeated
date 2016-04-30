@@ -13,7 +13,8 @@ import org.ggp.base.util.statemachine.exceptions.GoalDefinitionException;
 import org.ggp.base.util.statemachine.exceptions.MoveDefinitionException;
 import org.ggp.base.util.statemachine.exceptions.TransitionDefinitionException;
 
-public class MonteCarloTreeSearchGamer extends SampleGamer {
+public class MonteCarloTreeSearchGamer extends SampleGamer
+{
 
 	class Node
 	{
@@ -27,7 +28,7 @@ public class MonteCarloTreeSearchGamer extends SampleGamer {
 
 		public Node(Node par, MachineState stat, Move m, Boolean maxBool)
 		{
-			utility =0;
+			utility = 0;
 			visit = 0;
 			parent = par;
 			children = new ArrayList<Node>();
@@ -49,45 +50,45 @@ public class MonteCarloTreeSearchGamer extends SampleGamer {
 
 	@Override
 	public Move stateMachineSelectMove(long timeout)
-			throws TransitionDefinitionException, MoveDefinitionException, GoalDefinitionException {
+			throws TransitionDefinitionException, MoveDefinitionException, GoalDefinitionException
+	{
 
 		setTimeout(timeout);
 
 		StateMachine stateMachine = getStateMachine();
 		MachineState currentState = getCurrentState();
 		Node root = new Node(null, currentState, null, true);
-		if(stateMachine.findLegals(getRole(), currentState).size()==1)
+		if (stateMachine.findLegals(getRole(), currentState).size() == 1)
 		{
 			return stateMachine.findLegalx(getRole(), currentState);
 		}
 		Role role = getRole();
-		while(!isTimeout())
+		while (!isTimeout())
 		{
 			Node node = select(root);
 			expand(node);
-			int[] outDepth = {0};
-			if(!stateMachine.findTerminalp(node.state))
+			int[] outDepth = { 0 };
+			if (!stateMachine.findTerminalp(node.state))
 			{
 				MachineState terminalState = stateMachine.performDepthCharge(node.state, outDepth);
 				int currentScore = stateMachine.getGoal(terminalState, role);
 				backPropogate(node, currentScore);
 			}
 		}
-		int maxScore =0;
+		int maxScore = 0;
 		Move bestMove = null;
 		for (Node child : root.children)
 		{
 			int score;
-			if(child.visit ==0)
+			if (child.visit == 0)
 			{
-				score =0;
-			}
-			else
+				score = 0;
+			} else
 			{
-				score = child.utility/child.visit;
+				score = child.utility / child.visit;
 			}
-			System.out.println(child.move.getContents().toString() + "," + score );
-			if(score > maxScore)
+			System.out.println(child.move.getContents().toString() + "," + score);
+			if (score > maxScore)
 			{
 				maxScore = score;
 				bestMove = child.move;
@@ -100,30 +101,31 @@ public class MonteCarloTreeSearchGamer extends SampleGamer {
 	}
 
 	@Override
-    public void stateMachineMetaGame(long timeout) throws TransitionDefinitionException, MoveDefinitionException, GoalDefinitionException
-    {
+	public void stateMachineMetaGame(long timeout)
+			throws TransitionDefinitionException, MoveDefinitionException, GoalDefinitionException
+	{
 
-    }
+	}
 
 	private Node select(Node node)
 	{
-		if(node.visit==0)
+		if (node.visit == 0)
 		{
 			return node;
 		}
-		for(Node child : node.children)
+		for (Node child : node.children)
 		{
-			if(child.visit==0)
+			if (child.visit == 0)
 			{
 				return child;
 			}
 		}
-		double score =0;
+		double score = 0;
 		Node result = node;
-		for(Node child : node.children)
+		for (Node child : node.children)
 		{
 			double newScore = selectFn(child);
-			//System.out.println(newScore);
+			// System.out.println(newScore);
 			if (newScore > score)
 			{
 				score = newScore;
@@ -139,7 +141,7 @@ public class MonteCarloTreeSearchGamer extends SampleGamer {
 		StateMachine stateMachine = getStateMachine();
 
 		List<Move> moves = stateMachine.findLegals(role, node.state);
-		for(Move m : moves)
+		for (Move m : moves)
 		{
 			List<Move> nextMoves = getOrderedMoves(m, role, node.state);
 			MachineState newState = stateMachine.getNextState(node.state, nextMoves);
@@ -152,50 +154,60 @@ public class MonteCarloTreeSearchGamer extends SampleGamer {
 	{
 		node.visit++;
 		node.utility += score;
-		//if(node.move != null)
-		//	System.out.println(node.move.getContents().toString()+"," + node.visit + "," + node.utility);
+		// if(node.move != null)
+		// System.out.println(node.move.getContents().toString()+"," +
+		// node.visit + "," + node.utility);
 
-		if(node.parent != null)
+		if (node.parent != null)
 		{
 			backPropogate(node.parent, score);
 		}
 	}
+
 	private double selectFn(Node node)
 	{
-		return (node.utility/node.visit + EXPLORATION_FACTOR * Math.sqrt(2*Math.log(node.parent.visit)/node.visit));
+		return (node.utility / node.visit
+				+ EXPLORATION_FACTOR * Math.sqrt(2 * Math.log(node.parent.visit) / node.visit));
 	}
-	private boolean isSinglePlayer() {
+
+	private boolean isSinglePlayer()
+	{
 		StateMachine stateMachine = getStateMachine();
 		List<Role> roles = stateMachine.findRoles();
 
 		return (roles.size() == 1);
 	}
 
-	public SimpleImmutableEntry<Move, Integer>montecarlo(MachineState currentState, int count) throws TransitionDefinitionException, MoveDefinitionException, GoalDefinitionException
+	public SimpleImmutableEntry<Move, Integer> montecarlo(MachineState currentState, int count)
+			throws TransitionDefinitionException, MoveDefinitionException, GoalDefinitionException
 	{
 		StateMachine stateMachine = getStateMachine();
 		Role role = getRole();
 		int total = 0;
-		int [] theDepth = {0};
-		for(int i=0; i<count; i++)
+		int[] theDepth = { 0 };
+		for (int i = 0; i < count; i++)
 		{
 
 			MachineState terminalState = stateMachine.performDepthCharge(getCurrentState(), theDepth);
 			total += stateMachine.getGoal(terminalState, role);
 		}
-		int score = total/ count;
+		int score = total / count;
 		System.out.println("Monte Carlo score of " + score);
 		return new SimpleImmutableEntry(currentState, score);
 	}
 
-	private Role getOpponent() {
+	private Role getOpponent()
+	{
 		List<Role> roles = getStateMachine().findRoles();
-		if (roles.size() > 2) {
+		if (roles.size() > 2)
+		{
 			throw new ArrayIndexOutOfBoundsException("Unexpected: more than 2 players");
 		}
 
-		for (Role role : roles) {
-			if (!role.equals(getRole())) {
+		for (Role role : roles)
+		{
+			if (!role.equals(getRole()))
+			{
 				return role;
 			}
 		}
@@ -203,21 +215,26 @@ public class MonteCarloTreeSearchGamer extends SampleGamer {
 		return null;
 	}
 
-	private List<Move> getOrderedMoves(Move move, Role moveOwner, MachineState currentState) throws MoveDefinitionException {
+	private List<Move> getOrderedMoves(Move move, Role moveOwner, MachineState currentState)
+			throws MoveDefinitionException
+	{
 		StateMachine stateMachine = getStateMachine();
 		List<Role> roles = stateMachine.findRoles();
 
-		if (roles.size() > 2) {
+		if (roles.size() > 2)
+		{
 			throw new ArrayIndexOutOfBoundsException("Unexpected: more than 2 players");
 		}
 
 		List<Move> moves = new ArrayList<Move>();
 
-		for (Role role : roles) {
-			if (moveOwner.equals(role)) {
+		for (Role role : roles)
+		{
+			if (moveOwner.equals(role))
+			{
 				moves.add(move);
-			}
-			else {
+			} else
+			{
 				moves.add(stateMachine.findLegalx(role, currentState));
 			}
 		}
@@ -225,32 +242,38 @@ public class MonteCarloTreeSearchGamer extends SampleGamer {
 		return moves;
 	}
 
-	private void setTimeout(long timeout) {
-		if (timeout != 0){
+	private void setTimeout(long timeout)
+	{
+		if (timeout != 0)
+		{
 			endTime = timeout - TIME_BUFFER;
-		}
-		else {
+		} else
+		{
 			endTime = 0;
 		}
 	}
 
-	private boolean isTimeout() {
+	private boolean isTimeout()
+	{
 		Date now = new Date();
 		long nowTime = now.getTime();
 
 		return nowTime >= endTime;
 	}
 
-	private void setMetaTimeout(long timeout) {
-		if (timeout != 0){
+	private void setMetaTimeout(long timeout)
+	{
+		if (timeout != 0)
+		{
 			endMetaTime = timeout - META_TIME_BUFFER;
-		}
-		else {
+		} else
+		{
 			endMetaTime = 0;
 		}
 	}
 
-	private boolean isMetaTimeout() {
+	private boolean isMetaTimeout()
+	{
 		Date now = new Date();
 		long nowTime = now.getTime();
 
