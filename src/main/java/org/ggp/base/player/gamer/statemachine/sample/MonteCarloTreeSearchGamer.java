@@ -2,7 +2,14 @@ package org.ggp.base.player.gamer.statemachine.sample;
 
 import java.util.ArrayList;
 import java.util.Date;
+import java.util.LinkedList;
 import java.util.List;
+import java.util.Queue;
+import java.util.concurrent.Callable;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
 
 import org.ggp.base.util.statemachine.MachineState;
 import org.ggp.base.util.statemachine.Move;
@@ -14,7 +21,6 @@ import org.ggp.base.util.statemachine.exceptions.TransitionDefinitionException;
 
 public class MonteCarloTreeSearchGamer extends SampleGamer
 {
-
 	class Node
 	{
 		public int utility;
@@ -34,24 +40,66 @@ public class MonteCarloTreeSearchGamer extends SampleGamer
 			state = stat;
 			move = m;
 			max = maxBool;
+		}
+	}
 
+	class DepthChargeWorker implements Callable<Integer>
+	{
+		private StateMachine stateMachine;
+		private MachineState machineState;
+		private Role role;
+
+		public void setStateMachine(StateMachine stateMachine)
+		{
+			this.stateMachine = stateMachine;
 		}
 
+		public void setParams(MachineState machineState, Role role)
+		{
+			this.machineState = machineState;
+			this.role = role;
+		}
+
+		@Override
+		public Integer call() throws Exception
+		{
+			MachineState terminalState = stateMachine.performDepthCharge(machineState, null);
+			int score = stateMachine.getGoal(terminalState, role);
+
+			machineState = null;
+			role = null;
+
+			return score;
+		}
 	}
 
 	// amount of time to buffer before the timeout
-	private static final long TIME_BUFFER = 3000;
+	private static final long TIME_BUFFER = 2000;
 	private static final long META_TIME_BUFFER = 1000;
 	private static final int EXPLORATION_FACTOR = 50;
+	private static final int NUM_CORES = 4;
 
 	private long endTime = 0;
 	private long endMetaTime = 0;
+
+	private ExecutorService threadPool;
+	private DepthChargeWorker[] workers = new DepthChargeWorker[NUM_CORES];
+	private Queue<Future<Integer>> depthChargeResults = new LinkedList<Future<Integer>>();
+
+	public MonteCarloTreeSearchGamer()
+	{
+		for (int i = 0; i < workers.length; i++)
+		{
+			workers[i] = new DepthChargeWorker();
+		}
+
+		threadPool = Executors.newFixedThreadPool(NUM_CORES);
+	}
 
 	@Override
 	public Move stateMachineSelectMove(long timeout)
 			throws TransitionDefinitionException, MoveDefinitionException, GoalDefinitionException
 	{
-
 		setTimeout(timeout);
 
 		StateMachine stateMachine = getStateMachine();
@@ -66,14 +114,28 @@ public class MonteCarloTreeSearchGamer extends SampleGamer
 		{
 			Node node = select(root);
 			expand(node);
-			int[] outDepth = { 0 };
 			if (!stateMachine.findTerminalp(node.state))
 			{
-				MachineState terminalState = stateMachine.performDepthCharge(node.state, outDepth);
-				int currentScore = stateMachine.getGoal(terminalState, role);
-				backPropogate(node, currentScore);
+				startDepthCharges(node.state, role);
+
+				int visits = 0;
+				int totalScore = 0;
+				while (!depthChargeResults.isEmpty()) {
+					Future<Integer> result = depthChargeResults.remove();
+					try
+					{
+						totalScore += result.get();
+						visits++;
+					} catch (InterruptedException | ExecutionException e)
+					{
+						e.printStackTrace();
+					}
+				}
+
+				backPropogate(node, totalScore, visits);
 			}
 		}
+
 		int maxScore = 0;
 		Move bestMove = null;
 		for (Node child : root.children)
@@ -104,7 +166,21 @@ public class MonteCarloTreeSearchGamer extends SampleGamer
 	public void stateMachineMetaGame(long timeout)
 			throws TransitionDefinitionException, MoveDefinitionException, GoalDefinitionException
 	{
+		StateMachine stateMachine = getStateMachine();
+		for (int i = 0; i < workers.length; i++)
+		{
+			workers[i].setStateMachine(stateMachine);
+		}
+	}
 
+	private void startDepthCharges(MachineState machineState, Role role)
+	{
+		for (int i = 0; i < workers.length; i++)
+		{
+			workers[i].setParams(machineState, role);
+			Future<Integer> result = threadPool.submit(workers[i]);
+			depthChargeResults.add(result);
+		}
 	}
 
 	private Node select(Node node)
@@ -150,17 +226,17 @@ public class MonteCarloTreeSearchGamer extends SampleGamer
 		}
 	}
 
-	private void backPropogate(Node node, int score)
+	private void backPropogate(Node node, int totalScore, int visits)
 	{
-		node.visit++;
-		node.utility += score;
+		node.visit += visits;
+		node.utility += totalScore;
 		// if(node.move != null)
 		// System.out.println(node.move.getContents().toString()+"," +
 		// node.visit + "," + node.utility);
 
 		if (node.parent != null)
 		{
-			backPropogate(node.parent, score);
+			backPropogate(node.parent, totalScore, visits);
 		}
 	}
 
