@@ -1,6 +1,5 @@
 package org.ggp.base.player.gamer.statemachine.sample;
 
-import java.util.AbstractMap.SimpleImmutableEntry;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
@@ -83,7 +82,8 @@ public class MonteCarloTreeSearchGamer extends SampleGamer
 			if (child.visit == 0)
 			{
 				score = 0;
-			} else
+			}
+			else
 			{
 				score = child.utility / child.visit;
 			}
@@ -178,24 +178,6 @@ public class MonteCarloTreeSearchGamer extends SampleGamer
 		return (roles.size() == 1);
 	}
 
-	public SimpleImmutableEntry<Move, Integer> montecarlo(MachineState currentState, int count)
-			throws TransitionDefinitionException, MoveDefinitionException, GoalDefinitionException
-	{
-		StateMachine stateMachine = getStateMachine();
-		Role role = getRole();
-		int total = 0;
-		int[] theDepth = { 0 };
-		for (int i = 0; i < count; i++)
-		{
-
-			MachineState terminalState = stateMachine.performDepthCharge(getCurrentState(), theDepth);
-			total += stateMachine.getGoal(terminalState, role);
-		}
-		int score = total / count;
-		System.out.println("Monte Carlo score of " + score);
-		return new SimpleImmutableEntry(currentState, score);
-	}
-
 	private Role getOpponent()
 	{
 		List<Role> roles = getStateMachine().findRoles();
@@ -233,7 +215,8 @@ public class MonteCarloTreeSearchGamer extends SampleGamer
 			if (moveOwner.equals(role))
 			{
 				moves.add(move);
-			} else
+			}
+			else
 			{
 				moves.add(stateMachine.findLegalx(role, currentState));
 			}
@@ -247,7 +230,8 @@ public class MonteCarloTreeSearchGamer extends SampleGamer
 		if (timeout != 0)
 		{
 			endTime = timeout - TIME_BUFFER;
-		} else
+		}
+		else
 		{
 			endTime = 0;
 		}
@@ -266,7 +250,8 @@ public class MonteCarloTreeSearchGamer extends SampleGamer
 		if (timeout != 0)
 		{
 			endMetaTime = timeout - META_TIME_BUFFER;
-		} else
+		}
+		else
 		{
 			endMetaTime = 0;
 		}
