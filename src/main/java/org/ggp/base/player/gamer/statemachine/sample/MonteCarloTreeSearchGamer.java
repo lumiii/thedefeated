@@ -1,15 +1,11 @@
 package org.ggp.base.player.gamer.statemachine.sample;
 
-import java.util.ArrayList;
 import java.util.Date;
-import java.util.LinkedList;
+import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
-import java.util.Queue;
-import java.util.concurrent.Callable;
-import java.util.concurrent.ExecutionException;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
-import java.util.concurrent.Future;
+import java.util.Map;
+import java.util.Set;
 
 import org.ggp.base.util.statemachine.MachineState;
 import org.ggp.base.util.statemachine.Move;
@@ -21,79 +17,71 @@ import org.ggp.base.util.statemachine.exceptions.TransitionDefinitionException;
 
 public class MonteCarloTreeSearchGamer extends SampleGamer
 {
-	class Node
-	{
-		public int utility;
-		public int visit;
-		public Node parent;
-		public ArrayList<Node> children;
-		public MachineState state;
-		public Boolean max;
-		public Move move;
-
-		public Node(Node par, MachineState stat, Move m, Boolean maxBool)
-		{
-			utility = 0;
-			visit = 0;
-			parent = par;
-			children = new ArrayList<Node>();
-			state = stat;
-			move = m;
-			max = maxBool;
-		}
-	}
-
-	class DepthChargeWorker implements Callable<Integer>
-	{
-		private StateMachine stateMachine;
-		private MachineState machineState;
-		private Role role;
-
-		public void setStateMachine(StateMachine stateMachine)
-		{
-			this.stateMachine = stateMachine;
-		}
-
-		public void setParams(MachineState machineState, Role role)
-		{
-			this.machineState = machineState;
-			this.role = role;
-		}
-
-		@Override
-		public Integer call() throws Exception
-		{
-			MachineState terminalState = stateMachine.performDepthCharge(machineState, null);
-			int score = stateMachine.getGoal(terminalState, role);
-
-			machineState = null;
-			role = null;
-
-			return score;
-		}
-	}
-
-	// amount of time to buffer before the timeout
-	private static final long TIME_BUFFER = 2000;
-	private static final long META_TIME_BUFFER = 1000;
-	private static final int EXPLORATION_FACTOR = 50;
-	private static final int NUM_CORES = 4;
-
 	private long endTime = 0;
-	private long endMetaTime = 0;
 
-	private ExecutorService threadPool;
-	private DepthChargeWorker[] workers = new DepthChargeWorker[NUM_CORES];
-	private Queue<Future<Integer>> depthChargeResults = new LinkedList<Future<Integer>>();
+	// private ExecutorService threadPool;
+	private Thread[] threads = new Thread[Parameters.NUM_CORES];
+	private TreeSearchWorker[] workers = new TreeSearchWorker[Parameters.NUM_CORES];
+	private Map<MachineState, Node> grandchildren = new HashMap<>();
+	private Set<MachineState> previousStates = new HashSet<>();
+	private Node root = null;
+	private GameUtilities utility;
 
 	public MonteCarloTreeSearchGamer()
 	{
+		Thread.currentThread().setPriority(Parameters.MAIN_THREAD_PRIORITY);
+		// get a thread safe set via a map
 		for (int i = 0; i < workers.length; i++)
 		{
-			workers[i] = new DepthChargeWorker();
+			workers[i] = new TreeSearchWorker(i);
+			threads[i] = new Thread(workers[i]);
 		}
 
-		threadPool = Executors.newFixedThreadPool(NUM_CORES);
+		// threadPool = Executors.newFixedThreadPool(Parameters.NUM_CORES);
+	}
+
+	@Override
+	public void stateMachineStop()
+	{
+		System.out.println("Stop called");
+		stopWorkers();
+	}
+
+	@Override
+	public void stateMachineAbort()
+	{
+		System.out.println("Abort called");
+		stopWorkers();
+	}
+
+	@Override
+	public void stateMachineMetaGame(long timeout)
+			throws TransitionDefinitionException, MoveDefinitionException, GoalDefinitionException
+	{
+		setTimeout(timeout + 1000);
+
+		StateMachine stateMachine = getStateMachine();
+		Role role = getRole();
+
+		for (int i = 0; i < workers.length; i++)
+		{
+			workers[i].init(stateMachine, role);
+		}
+
+		utility = new GameUtilities(stateMachine, role);
+
+		grandchildren.clear();
+		previousStates.clear();
+		previousStates.add(getCurrentState());
+
+		root = new Node(null, getCurrentState(), null, true);
+
+		updateWorkers(root);
+		startWorkers();
+
+		waitForTimeout();
+
+		setTimeout(0);
 	}
 
 	@Override
@@ -105,19 +93,54 @@ public class MonteCarloTreeSearchGamer extends SampleGamer
 		StateMachine stateMachine = getStateMachine();
 		MachineState currentState = getCurrentState();
 
-		boolean singleMove = (stateMachine.findLegals(getRole(), currentState).size() == 1);
+		// TODO: evaluate whether we really need this or not
+		previousStates.add(currentState);
 
-		Node root = new Node(null, currentState, null, true);
-
-		treeSearch(root);
-
-		// make sure to have at least one move to return
-		// in the case that all scores come back as 0
-		Move bestMove = stateMachine.findLegalx(getRole(), currentState);
-
-		if (!singleMove)
+		if (root == null)
 		{
+			root = new Node(null, currentState, null, true);
+		}
+		else
+		{
+			// TODO: write this as a neater and more general pruning algorithm
+			Node n = grandchildren.get(currentState);
+			if (n != null)
+			{
+				System.out.println("Found tree");
+				root = n;
+				root.parent = null;
+			}
+			else
+			{
+				root = new Node(null, currentState, null, true);
+			}
+
+			grandchildren.clear();
+		}
+
+		updateWorkers(root);
+
+		System.out.println("Before waiting");
+		waitForTimeout();
+		System.out.println("After waiting");
+
+		Role role = getRole();
+
+		boolean singleMove = (stateMachine.findLegals(role, currentState).size() == 1);
+
+		Move bestMove = null;
+
+		if (singleMove)
+		{
+			bestMove = stateMachine.findLegalx(role, currentState);
+		}
+		else
+		{
+			System.out.println("Computing score...");
 			int maxScore = 0;
+
+			System.out.println("Iterating through " + root.children.size());
+
 			for (Node child : root.children)
 			{
 				int score;
@@ -129,196 +152,120 @@ public class MonteCarloTreeSearchGamer extends SampleGamer
 				{
 					score = child.utility / child.visit;
 				}
+
 				System.out.println(child.move.getContents().toString() + "," + score);
-				if (score > maxScore)
+
+				// don't end up in cycles
+				if (score > maxScore && !previousStates.contains(child.state))
 				{
 					maxScore = score;
 					bestMove = child.move;
 				}
 			}
+
+			System.out.println("Finished iterating");
+		}
+
+		// make sure to have at least one move to return
+		// in the case that all scores come back as 0
+
+		// TODO: hacky, see if there's a better way to do this
+		if (bestMove == null)
+		{
+			System.out.println("No best move, getting unvisited");
+			bestMove = getUnvisitedMove();
+			System.out.println("Finished getting unvisited");
+			if (bestMove == null)
+			{
+				bestMove = stateMachine.findLegalx(getRole(), currentState);
+			}
+		}
+
+		// TODO: hack for tree pruning. Do this properly
+		System.out.println("Adding all grandchildren");
+		for (Node child : root.children)
+		{
+			grandchildren.put(child.state, child);
+			for (Node grandchild : child.children)
+			{
+				grandchildren.put(grandchild.state, grandchild);
+			}
 		}
 
 		setTimeout(0);
 
+		System.out.println("All done");
 		return bestMove;
 	}
 
-	@Override
-	public void stateMachineMetaGame(long timeout)
-			throws TransitionDefinitionException, MoveDefinitionException, GoalDefinitionException
+	private Move getUnvisitedMove() throws MoveDefinitionException, TransitionDefinitionException
 	{
 		StateMachine stateMachine = getStateMachine();
-		for (int i = 0; i < workers.length; i++)
-		{
-			workers[i].setStateMachine(stateMachine);
-		}
-	}
-
-	private void treeSearch(Node root) throws MoveDefinitionException, TransitionDefinitionException {
-		StateMachine stateMachine = getStateMachine();
+		MachineState currentState = getCurrentState();
 		Role role = getRole();
-
-		while (!isTimeout())
+		List<Move> moveList = stateMachine.findLegals(role, currentState);
+		for (Move move : moveList)
 		{
-			Node node = select(root);
-			expand(node);
-			if (!stateMachine.findTerminalp(node.state))
+			List<Move> jointMove = utility.getOrderedMoves(move, role, currentState);
+			MachineState nextState = stateMachine.findNext(jointMove, currentState);
+			if (!previousStates.contains(nextState))
 			{
-				startDepthCharges(node.state, role);
-
-				int visits = 0;
-				int totalScore = 0;
-				while (!depthChargeResults.isEmpty()) {
-					Future<Integer> result = depthChargeResults.remove();
-					try
-					{
-						totalScore += result.get();
-						visits++;
-					} catch (InterruptedException | ExecutionException e)
-					{
-						e.printStackTrace();
-					}
-				}
-
-				backPropogate(node, totalScore, visits);
-			}
-		}
-
-	}
-
-	private void startDepthCharges(MachineState machineState, Role role)
-	{
-		for (int i = 0; i < workers.length; i++)
-		{
-			workers[i].setParams(machineState, role);
-			Future<Integer> result = threadPool.submit(workers[i]);
-			depthChargeResults.add(result);
-		}
-	}
-
-	private Node select(Node node)
-	{
-		if (node.visit == 0)
-		{
-			return node;
-		}
-		for (Node child : node.children)
-		{
-			if (child.visit == 0)
-			{
-				return child;
-			}
-		}
-		double score = 0;
-		Node result = node;
-		for (Node child : node.children)
-		{
-			double newScore = selectFn(child);
-			// System.out.println(newScore);
-			if (newScore > score)
-			{
-				score = newScore;
-				result = child;
-			}
-		}
-		return select(result);
-	}
-
-	private void expand(Node node) throws MoveDefinitionException, TransitionDefinitionException
-	{
-		Role role = getRole();
-		StateMachine stateMachine = getStateMachine();
-
-		List<Move> moves = stateMachine.findLegals(role, node.state);
-		for (Move m : moves)
-		{
-			List<Move> nextMoves = getOrderedMoves(m, role, node.state);
-			MachineState newState = stateMachine.getNextState(node.state, nextMoves);
-			Node newNode = new Node(node, newState, m, !node.max);
-			node.children.add(newNode);
-		}
-	}
-
-	private void backPropogate(Node node, int totalScore, int visits)
-	{
-		node.visit += visits;
-		node.utility += totalScore;
-		// if(node.move != null)
-		// System.out.println(node.move.getContents().toString()+"," +
-		// node.visit + "," + node.utility);
-
-		if (node.parent != null)
-		{
-			backPropogate(node.parent, totalScore, visits);
-		}
-	}
-
-	private double selectFn(Node node)
-	{
-		return (node.utility / node.visit
-				+ EXPLORATION_FACTOR * Math.sqrt(2 * Math.log(node.parent.visit) / node.visit));
-	}
-
-	private boolean isSinglePlayer()
-	{
-		StateMachine stateMachine = getStateMachine();
-		List<Role> roles = stateMachine.findRoles();
-
-		return (roles.size() == 1);
-	}
-
-	private Role getOpponent()
-	{
-		List<Role> roles = getStateMachine().findRoles();
-		if (roles.size() > 2)
-		{
-			throw new ArrayIndexOutOfBoundsException("Unexpected: more than 2 players");
-		}
-
-		for (Role role : roles)
-		{
-			if (!role.equals(getRole()))
-			{
-				return role;
+				return move;
 			}
 		}
 
 		return null;
 	}
 
-	private List<Move> getOrderedMoves(Move move, Role moveOwner, MachineState currentState)
-			throws MoveDefinitionException
+	private void startWorkers()
 	{
-		StateMachine stateMachine = getStateMachine();
-		List<Role> roles = stateMachine.findRoles();
-
-		if (roles.size() > 2)
+		for (int i = 0; i < workers.length; i++)
 		{
-			throw new ArrayIndexOutOfBoundsException("Unexpected: more than 2 players");
+			// threadPool.submit(workers[i]);
+			threads[i].setName("TreeSearchWorker-" + i);
+			threads[i].setPriority(Parameters.WORKER_THREAD_PRIORITY);
+			threads[i].start();
 		}
+	}
 
-		List<Move> moves = new ArrayList<Move>();
-
-		for (Role role : roles)
+	private void stopWorkers()
+	{
+		// threadPool.shutdownNow();
+		// threadPool = Executors.newFixedThreadPool(Parameters.NUM_CORES);
+		for (int i = 0; i < workers.length; i++)
 		{
-			if (moveOwner.equals(role))
+			threads[i].interrupt();
+			threads[i] = new Thread(workers[i]);
+		}
+	}
+
+	private void waitForTimeout()
+	{
+		while (!isTimeout())
+		{
+			try
 			{
-				moves.add(move);
+				Thread.sleep(getRemainingTime());
 			}
-			else
+			catch (InterruptedException e)
 			{
-				moves.add(stateMachine.findLegalx(role, currentState));
 			}
 		}
+	}
 
-		return moves;
+	private void updateWorkers(Node root) throws MoveDefinitionException, TransitionDefinitionException
+	{
+		for (int i = 0; i < workers.length; i++)
+		{
+			workers[i].setRoot(root);
+		}
 	}
 
 	private void setTimeout(long timeout)
 	{
 		if (timeout != 0)
 		{
-			endTime = timeout - TIME_BUFFER;
+			endTime = timeout - Parameters.TIME_BUFFER;
 		}
 		else
 		{
@@ -334,23 +281,11 @@ public class MonteCarloTreeSearchGamer extends SampleGamer
 		return nowTime >= endTime;
 	}
 
-	private void setMetaTimeout(long timeout)
-	{
-		if (timeout != 0)
-		{
-			endMetaTime = timeout - META_TIME_BUFFER;
-		}
-		else
-		{
-			endMetaTime = 0;
-		}
-	}
-
-	private boolean isMetaTimeout()
+	private long getRemainingTime()
 	{
 		Date now = new Date();
 		long nowTime = now.getTime();
 
-		return nowTime >= endMetaTime;
+		return endTime - nowTime;
 	}
 }
