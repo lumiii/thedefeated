@@ -1,7 +1,6 @@
 package org.ggp.base.player.gamer.statemachine.sample;
 
 import java.util.List;
-import java.util.concurrent.Callable;
 
 import org.ggp.base.util.statemachine.MachineState;
 import org.ggp.base.util.statemachine.Move;
@@ -12,49 +11,67 @@ import org.ggp.base.util.statemachine.exceptions.GoalDefinitionException;
 import org.ggp.base.util.statemachine.exceptions.MoveDefinitionException;
 import org.ggp.base.util.statemachine.exceptions.TransitionDefinitionException;
 
-public class TreeSearchWorker implements Callable<Integer>
+public class TreeSearchWorker implements Runnable
 {
-	private static final int EXPLORATION_FACTOR = 50;
-	private static final int DEPTH_CHARGE_COUNT = 4;
 	private volatile static int nodesVisited = 0;
 	private volatile static int nodesUpdated = 0;
 
 	private int id;
-	private GameUtilities utility;
+
 	private StateMachine stateMachine;
+
+	private GameUtilities utility;
 	private Role role;
 	private Node root;
+
+	private Node newRoot;
 
 	public TreeSearchWorker(int id)
 	{
 		this.id = id;
 	}
 
-	public void setStateMachine(StateMachine stateMachine)
+	public void init(StateMachine stateMachine, Role role)
 	{
 		this.stateMachine = new CachedStateMachine(stateMachine);
-	}
-
-	public void set(Role role, Node root)
-	{
 		this.role = role;
-		this.root = root;
 		this.utility = new GameUtilities(this.stateMachine, role);
+		this.root = null;
+		this.newRoot = null;
+
+		nodesVisited = 0;
+		nodesUpdated = 0;
 	}
 
-	public int getId()
+	public void setRoot(Node root)
 	{
-		return id;
+		this.newRoot = root;
+	}
+
+	private void update()
+	{
+		this.root = this.newRoot;
 	}
 
 	@Override
-	public Integer call() throws Exception
+	public void run()
 	{
-		System.out.println("Starting worker" + getId() + " thread " + Thread.currentThread().getName());
-		treeSearch();
-		System.out.println("Stopping worker" + getId() + " thread " + Thread.currentThread().getName());
+		System.out.println("Starting worker" + id + " thread " + Thread.currentThread().getName());
+		Thread currentThread = Thread.currentThread();
 
-		return getId();
+		while (!currentThread.isInterrupted())
+		{
+			try
+			{
+				update();
+				treeSearch();
+			}
+			// catch all exceptions
+			catch (Exception e)
+			{
+				e.printStackTrace();
+			}
+		}
 	}
 
 	private void treeSearch() throws MoveDefinitionException, TransitionDefinitionException
@@ -65,21 +82,22 @@ public class TreeSearchWorker implements Callable<Integer>
 		{
 			nodesVisited++;
 
-			expand(node);
 			if (!stateMachine.findTerminalp(node.state))
 			{
+				expand(node);
+
 				int visits = 0;
 				int totalScore = 0;
 
-				for (int i = 0; i < DEPTH_CHARGE_COUNT; i++)
+				for (int i = 0; i < Parameters.DEPTH_CHARGE_COUNT; i++)
 				{
-					MachineState terminalState;
 					try
 					{
-						terminalState = stateMachine.performDepthCharge(node.state, null);
+						MachineState terminalState = stateMachine.performDepthCharge(node.state, null);
 						totalScore += stateMachine.getGoal(terminalState, role);
 						visits++;
-					} catch (GoalDefinitionException | TransitionDefinitionException | MoveDefinitionException e)
+					}
+					catch (GoalDefinitionException | TransitionDefinitionException | MoveDefinitionException e)
 					{
 						e.printStackTrace();
 					}
@@ -89,15 +107,15 @@ public class TreeSearchWorker implements Callable<Integer>
 			}
 			else
 			{
-				int score = 0;
 				try
 				{
-					score = stateMachine.getGoal(node.state, role);
+					int score = stateMachine.getGoal(node.state, role);
 					backPropogate(node, score, 1);
-				} catch (GoalDefinitionException e)
+				}
+				catch (GoalDefinitionException e)
 				{
-					// TODO Auto-generated catch block
-					e.printStackTrace();
+					// this is a common occurrence
+					// just ignore it
 				}
 			}
 
@@ -160,6 +178,7 @@ public class TreeSearchWorker implements Callable<Integer>
 			List<Move> nextMoves = utility.getOrderedMoves(m, role, node.state);
 			MachineState newState = stateMachine.getNextState(node.state, nextMoves);
 			Node newNode = new Node(node, newState, m, !node.max);
+
 			node.children.add(newNode);
 		}
 	}
@@ -188,8 +207,15 @@ public class TreeSearchWorker implements Callable<Integer>
 				return 0;
 			}
 
+			int parentVisit = 0;
+
+			if (node.parent != null)
+			{
+				parentVisit = node.parent.visit;
+			}
+
 			return (node.utility / node.visit
-				+ EXPLORATION_FACTOR * Math.sqrt(2 * Math.log(node.parent.visit) / node.visit));
+					+ Parameters.EXPLORATION_FACTOR * Math.sqrt(2 * Math.log(parentVisit) / node.visit));
 		}
 	}
 }

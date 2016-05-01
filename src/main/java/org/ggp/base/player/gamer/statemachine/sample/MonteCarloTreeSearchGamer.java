@@ -6,11 +6,6 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import java.util.concurrent.ExecutionException;
-import java.util.concurrent.ExecutorCompletionService;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
-import java.util.concurrent.Future;
 
 import org.ggp.base.util.statemachine.MachineState;
 import org.ggp.base.util.statemachine.Move;
@@ -22,15 +17,11 @@ import org.ggp.base.util.statemachine.exceptions.TransitionDefinitionException;
 
 public class MonteCarloTreeSearchGamer extends SampleGamer
 {
-	// amount of time to buffer before the timeout
-	private static final long TIME_BUFFER = 2000;
-	private static final int NUM_CORES = 2;
-
 	private long endTime = 0;
 
-	private ExecutorService threadPool;
-	private ExecutorCompletionService<Integer> completionQueue;
-	private TreeSearchWorker[] workers = new TreeSearchWorker[NUM_CORES];
+	// private ExecutorService threadPool;
+	private Thread[] threads = new Thread[Parameters.NUM_CORES];
+	private TreeSearchWorker[] workers = new TreeSearchWorker[Parameters.NUM_CORES];
 	private Map<MachineState, Node> grandchildren = new HashMap<>();
 	private Set<MachineState> previousStates = new HashSet<>();
 	private Node root = null;
@@ -38,14 +29,29 @@ public class MonteCarloTreeSearchGamer extends SampleGamer
 
 	public MonteCarloTreeSearchGamer()
 	{
+		Thread.currentThread().setPriority(Parameters.MAIN_THREAD_PRIORITY);
 		// get a thread safe set via a map
 		for (int i = 0; i < workers.length; i++)
 		{
 			workers[i] = new TreeSearchWorker(i);
+			threads[i] = new Thread(workers[i]);
 		}
 
-		threadPool = Executors.newFixedThreadPool(NUM_CORES);
-		completionQueue = new ExecutorCompletionService<Integer>(threadPool);
+		// threadPool = Executors.newFixedThreadPool(Parameters.NUM_CORES);
+	}
+
+	@Override
+	public void stateMachineStop()
+	{
+		System.out.println("Stop called");
+		stopWorkers();
+	}
+
+	@Override
+	public void stateMachineAbort()
+	{
+		System.out.println("Abort called");
+		stopWorkers();
 	}
 
 	@Override
@@ -54,18 +60,26 @@ public class MonteCarloTreeSearchGamer extends SampleGamer
 	{
 		setTimeout(timeout + 1000);
 
+		StateMachine stateMachine = getStateMachine();
+		Role role = getRole();
+
 		for (int i = 0; i < workers.length; i++)
 		{
-			workers[i].setStateMachine(getStateMachine());
+			workers[i].init(stateMachine, role);
 		}
 
-		utility = new GameUtilities(getStateMachine(), getRole());
+		utility = new GameUtilities(stateMachine, role);
 
 		grandchildren.clear();
+		previousStates.clear();
 		previousStates.add(getCurrentState());
 
 		root = new Node(null, getCurrentState(), null, true);
-		treeSearch(root);
+
+		updateWorkers(root);
+		startWorkers();
+
+		waitForTimeout();
 
 		setTimeout(0);
 	}
@@ -79,9 +93,8 @@ public class MonteCarloTreeSearchGamer extends SampleGamer
 		StateMachine stateMachine = getStateMachine();
 		MachineState currentState = getCurrentState();
 
-		previousStates.add(getCurrentState());
-
-		boolean singleMove = (stateMachine.findLegals(getRole(), currentState).size() == 1);
+		// TODO: evaluate whether we really need this or not
+		previousStates.add(currentState);
 
 		if (root == null)
 		{
@@ -89,6 +102,7 @@ public class MonteCarloTreeSearchGamer extends SampleGamer
 		}
 		else
 		{
+			// TODO: write this as a neater and more general pruning algorithm
 			Node n = grandchildren.get(currentState);
 			if (n != null)
 			{
@@ -104,16 +118,29 @@ public class MonteCarloTreeSearchGamer extends SampleGamer
 			grandchildren.clear();
 		}
 
+		updateWorkers(root);
 
-		treeSearch(root);
+		System.out.println("Before waiting");
+		waitForTimeout();
+		System.out.println("After waiting");
 
-		// make sure to have at least one move to return
-		// in the case that all scores come back as 0
+		Role role = getRole();
+
+		boolean singleMove = (stateMachine.findLegals(role, currentState).size() == 1);
+
 		Move bestMove = null;
 
-		if (!singleMove)
+		if (singleMove)
 		{
+			bestMove = stateMachine.findLegalx(role, currentState);
+		}
+		else
+		{
+			System.out.println("Computing score...");
 			int maxScore = 0;
+
+			System.out.println("Iterating through " + root.children.size());
+
 			for (Node child : root.children)
 			{
 				int score;
@@ -125,24 +152,37 @@ public class MonteCarloTreeSearchGamer extends SampleGamer
 				{
 					score = child.utility / child.visit;
 				}
+
 				System.out.println(child.move.getContents().toString() + "," + score);
-				if (score > maxScore)
+
+				// don't end up in cycles
+				if (score > maxScore && !previousStates.contains(child.state))
 				{
 					maxScore = score;
 					bestMove = child.move;
 				}
 			}
+
+			System.out.println("Finished iterating");
 		}
 
+		// make sure to have at least one move to return
+		// in the case that all scores come back as 0
+
+		// TODO: hacky, see if there's a better way to do this
 		if (bestMove == null)
 		{
+			System.out.println("No best move, getting unvisited");
 			bestMove = getUnvisitedMove();
+			System.out.println("Finished getting unvisited");
 			if (bestMove == null)
 			{
 				bestMove = stateMachine.findLegalx(getRole(), currentState);
 			}
 		}
 
+		// TODO: hack for tree pruning. Do this properly
+		System.out.println("Adding all grandchildren");
 		for (Node child : root.children)
 		{
 			grandchildren.put(child.state, child);
@@ -154,6 +194,7 @@ public class MonteCarloTreeSearchGamer extends SampleGamer
 
 		setTimeout(0);
 
+		System.out.println("All done");
 		return bestMove;
 	}
 
@@ -176,38 +217,47 @@ public class MonteCarloTreeSearchGamer extends SampleGamer
 		return null;
 	}
 
-	private void treeSearch(Node root) throws MoveDefinitionException, TransitionDefinitionException
+	private void startWorkers()
 	{
-		Role role = getRole();
-
 		for (int i = 0; i < workers.length; i++)
 		{
-			TreeSearchWorker worker = workers[i];
-			worker.set(role, root);
-			System.out.println("Submitting worker : " + worker.getId());
-			completionQueue.submit(worker);
+			// threadPool.submit(workers[i]);
+			threads[i].setName("TreeSearchWorker-" + i);
+			threads[i].setPriority(Parameters.WORKER_THREAD_PRIORITY);
+			threads[i].start();
 		}
+	}
 
+	private void stopWorkers()
+	{
+		// threadPool.shutdownNow();
+		// threadPool = Executors.newFixedThreadPool(Parameters.NUM_CORES);
+		for (int i = 0; i < workers.length; i++)
+		{
+			threads[i].interrupt();
+			threads[i] = new Thread(workers[i]);
+		}
+	}
+
+	private void waitForTimeout()
+	{
 		while (!isTimeout())
 		{
 			try
 			{
-				Future<Integer> future = completionQueue.take();
-				int index = future.get();
-				System.out.println("Submitting worker : " + index);
-				completionQueue.submit(workers[index]);
-			} catch (InterruptedException | ExecutionException e)
+				Thread.sleep(getRemainingTime());
+			}
+			catch (InterruptedException e)
 			{
-				e.printStackTrace();
 			}
 		}
+	}
 
-		// drain the thread pool
-		Future<Integer> future = completionQueue.poll();
-		while (future != null)
+	private void updateWorkers(Node root) throws MoveDefinitionException, TransitionDefinitionException
+	{
+		for (int i = 0; i < workers.length; i++)
 		{
-			future.cancel(false);
-			future = completionQueue.poll();
+			workers[i].setRoot(root);
 		}
 	}
 
@@ -215,7 +265,7 @@ public class MonteCarloTreeSearchGamer extends SampleGamer
 	{
 		if (timeout != 0)
 		{
-			endTime = timeout - TIME_BUFFER;
+			endTime = timeout - Parameters.TIME_BUFFER;
 		}
 		else
 		{
@@ -229,5 +279,13 @@ public class MonteCarloTreeSearchGamer extends SampleGamer
 		long nowTime = now.getTime();
 
 		return nowTime >= endTime;
+	}
+
+	private long getRemainingTime()
+	{
+		Date now = new Date();
+		long nowTime = now.getTime();
+
+		return endTime - nowTime;
 	}
 }
