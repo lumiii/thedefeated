@@ -44,6 +44,8 @@ public class TreeSearchGamer extends SampleGamer {
 		return selectMove;
 	}
 
+
+
 	private SimpleImmutableEntry<Move, Integer> getMaxMove(MachineState currentState) throws MoveDefinitionException {
 		StateMachine stateMachine = getStateMachine();
 		List<Move> moves = stateMachine.findLegals(getRole(), currentState);
