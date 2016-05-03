@@ -261,20 +261,13 @@ public class TreeSearchWorker implements Runnable
 		{
 			int roleIndex;
 
-			if (Parameters.EMULATE_OPPONENT)
+			if (node.maxNode)
 			{
-				if (node.maxNode)
-				{
-					roleIndex = utility.getPlayerRoleIndex();
-				}
-				else
-				{
-					roleIndex = utility.getFirstOpponentRoleIndex();
-				}
+				roleIndex = utility.getPlayerRoleIndex();
 			}
 			else
 			{
-				roleIndex = utility.getPlayerRoleIndex();
+				roleIndex = utility.getFirstOpponentRoleIndex();
 			}
 
 			if (!usePriorityQueue)
