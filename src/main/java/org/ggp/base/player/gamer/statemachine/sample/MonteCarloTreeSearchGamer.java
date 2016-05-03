@@ -23,7 +23,7 @@ public class MonteCarloTreeSearchGamer extends SampleGamer
 	// private ExecutorService threadPool;
 	private Thread[] threads = new Thread[Parameters.NUM_CORES];
 	private TreeSearchWorker[] workers = new TreeSearchWorker[Parameters.NUM_CORES];
-	private Map<MachineState, Node> grandchildren = new HashMap<>();
+	private Map<MachineState, Node> childStates = new HashMap<>();
 	private Set<MachineState> previousStates = new HashSet<>();
 	private Node root = null;
 	private GameUtilities utility;
@@ -71,7 +71,7 @@ public class MonteCarloTreeSearchGamer extends SampleGamer
 
 		utility = new GameUtilities(stateMachine, role);
 
-		grandchildren.clear();
+		childStates.clear();
 		previousStates.clear();
 		previousStates.add(getCurrentState());
 
@@ -104,7 +104,7 @@ public class MonteCarloTreeSearchGamer extends SampleGamer
 		else
 		{
 			// TODO: write this as a neater and more general pruning algorithm
-			Node n = grandchildren.get(currentState);
+			Node n = childStates.get(currentState);
 			if (n != null)
 			{
 				System.out.println("Found tree");
@@ -116,7 +116,7 @@ public class MonteCarloTreeSearchGamer extends SampleGamer
 				root = new Node(null, currentState, null, true);
 			}
 
-			grandchildren.clear();
+			childStates.clear();
 		}
 
 		updateWorkers(root);
@@ -131,8 +131,7 @@ public class MonteCarloTreeSearchGamer extends SampleGamer
 
 		Move bestMove = null;
 
-		//if (singleMove)
-		if(false)
+		if (singleMove)
 		{
 			bestMove = stateMachine.findLegalx(role, currentState);
 		}
@@ -143,16 +142,18 @@ public class MonteCarloTreeSearchGamer extends SampleGamer
 
 			System.out.println("Iterating through " + root.children.size());
 
-			Map<Move,Integer> moveScore = new HashMap<Move,Integer>();
-			Map<Move,Integer> moveCount = new HashMap<Move,Integer>();
+			Map<Move, Integer> moveScore = new HashMap<Move, Integer>();
+			Map<Move, Integer> moveCount = new HashMap<Move, Integer>();
 			for (Move m : stateMachine.findLegals(getRole(), currentState))
 			{
 				moveScore.put(m, 0);
 				moveCount.put(m, 0);
-				//System.out.println(m.getContents());
+				// System.out.println(m.getContents());
 			}
-			int roleIndex =0;
-			for(roleIndex =0; !stateMachine.getRoles().get(roleIndex).equals(getRole());roleIndex++);
+			int roleIndex = 0;
+			for (roleIndex = 0; !stateMachine.getRoles().get(roleIndex).equals(getRole()); roleIndex++)
+				;
+
 			for (Node child : root.children)
 			{
 				int score;
@@ -164,20 +165,21 @@ public class MonteCarloTreeSearchGamer extends SampleGamer
 				{
 					score = child.utility / child.visit;
 				}
-				Move m = child.move.get(roleIndex);
-				//System.out.println(m.getContents());
-				moveScore.put(m, moveScore.get(m)+score);
-				moveCount.put(m, moveCount.get(m)+1);
 
+				Move m = child.move.get(roleIndex);
+				// System.out.println(m.getContents());
+				moveScore.put(m, moveScore.get(m) + score);
+				moveCount.put(m, moveCount.get(m) + 1);
 			}
 
-			for(Entry<Move, Integer> move : moveScore.entrySet())
+			// TODO: iterator
+			for (Entry<Move, Integer> move : moveScore.entrySet())
 			{
 				Move m = move.getKey();
-				int score = moveScore.get(m)/moveCount.get(m);
-				if(score > maxScore)
+				int score = moveScore.get(m) / moveCount.get(m);
+				if (score > maxScore)
 				{
-					maxScore= score;
+					maxScore = score;
 					bestMove = m;
 				}
 			}
@@ -200,15 +202,9 @@ public class MonteCarloTreeSearchGamer extends SampleGamer
 			}
 		}
 
-		// TODO: hack for tree pruning. Do this properly
-		System.out.println("Adding all grandchildren");
 		for (Node child : root.children)
 		{
-			grandchildren.put(child.state, child);
-			//for (Node grandchild : child.children)
-			//{
-				//grandchildren.put(grandchild.state, grandchild);
-			//}
+			childStates.put(child.state, child);
 		}
 
 		setTimeout(0);
@@ -256,6 +252,8 @@ public class MonteCarloTreeSearchGamer extends SampleGamer
 			threads[i].interrupt();
 			threads[i] = new Thread(workers[i]);
 		}
+
+		TreeSearchWorker.printStats();
 	}
 
 	private void waitForTimeout()

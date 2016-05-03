@@ -21,7 +21,6 @@ public class TreeSearchWorker implements Runnable
 
 	private StateMachine stateMachine;
 
-	private GameUtilities utility;
 	private Role role;
 	private Node root;
 
@@ -36,7 +35,6 @@ public class TreeSearchWorker implements Runnable
 	{
 		this.stateMachine = new CachedStateMachine(stateMachine);
 		this.role = role;
-		this.utility = new GameUtilities(this.stateMachine, role);
 		this.root = null;
 		this.newRoot = null;
 
@@ -120,10 +118,15 @@ public class TreeSearchWorker implements Runnable
 				}
 			}
 
-			System.out.println("From thread " + Thread.currentThread().getName());
-			System.out.println("Nodes visited: " + nodesVisited);
-			System.out.println("Nodes updated: " + nodesUpdated);
+			printStats();
 		}
+	}
+
+	public static void printStats()
+	{
+		System.out.println("From thread " + Thread.currentThread().getName());
+		System.out.println("Nodes visited: " + nodesVisited);
+		System.out.println("Nodes updated: " + nodesUpdated);
 	}
 
 	private Node select(Node node)
@@ -175,19 +178,16 @@ public class TreeSearchWorker implements Runnable
 	{
 		List<List<Move>> moves = new ArrayList<List<Move>>();
 		List<Role> roles = stateMachine.getRoles();
-		int numRoles = roles.size();
-		for(int i =0; i<numRoles*numRoles; i++)
-		{
-			moves.add(new ArrayList<Move>());
-		}
-		for(Role r : stateMachine.getRoles())
+
+		moves.add(new ArrayList<Move>());
+
+		for(Role r : roles)
 		{
 			List<Move> roleMoves = stateMachine.findLegals(r, node.state);
 			List<List<Move>> newMoves = new ArrayList<List<Move>>();
 
 			for (List<Move> l : moves)
 			{
-
 				for(Move m : roleMoves)
 				{
 					ArrayList<Move> tempList = new ArrayList<Move>(l);
@@ -195,6 +195,7 @@ public class TreeSearchWorker implements Runnable
 					newMoves.add(tempList);
 				}
 			}
+
 			moves = newMoves;
 		}
 
