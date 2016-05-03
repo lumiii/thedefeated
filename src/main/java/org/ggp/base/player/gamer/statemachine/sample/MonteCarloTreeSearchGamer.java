@@ -64,6 +64,8 @@ public class MonteCarloTreeSearchGamer extends SampleGamer
 		StateMachine stateMachine = getStateMachine();
 		Role role = getRole();
 
+		TreeSearchWorker.globalInit();
+
 		for (int i = 0; i < workers.length; i++)
 		{
 			workers[i].init(stateMachine, role);
@@ -103,12 +105,11 @@ public class MonteCarloTreeSearchGamer extends SampleGamer
 		}
 		else
 		{
-			// TODO: write this as a neater and more general pruning algorithm
-			Node n = childStates.get(currentState);
-			if (n != null)
+			Node childNode = childStates.get(currentState);
+
+			if (childNode != null)
 			{
-				System.out.println("Found tree");
-				root = n;
+				root = childNode;
 				root.parent = null;
 			}
 			else
@@ -172,11 +173,16 @@ public class MonteCarloTreeSearchGamer extends SampleGamer
 				moveCount.put(m, moveCount.get(m) + 1);
 			}
 
-			// TODO: iterator
 			for (Entry<Move, Integer> move : moveScore.entrySet())
 			{
 				Move m = move.getKey();
-				int score = moveScore.get(m) / moveCount.get(m);
+				int count = moveCount.get(m);
+				int score = 0;
+				if (count > 0)
+				{
+					score = move.getValue() / moveCount.get(m);
+				}
+
 				if (score > maxScore)
 				{
 					maxScore = score;

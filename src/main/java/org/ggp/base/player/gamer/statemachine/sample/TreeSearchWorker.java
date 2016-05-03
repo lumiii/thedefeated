@@ -1,7 +1,11 @@
 package org.ggp.base.player.gamer.statemachine.sample;
 
 import java.util.ArrayList;
+import java.util.Collections;
+import java.util.HashSet;
 import java.util.List;
+import java.util.PriorityQueue;
+import java.util.Set;
 
 import org.ggp.base.util.statemachine.MachineState;
 import org.ggp.base.util.statemachine.Move;
@@ -17,6 +21,12 @@ public class TreeSearchWorker implements Runnable
 	private volatile static int nodesVisited = 0;
 	private volatile static int nodesUpdated = 0;
 
+	private volatile static Node[] searchResults = new Node[Parameters.NUM_CORES];
+
+	private volatile static boolean usePriorityQueue = false;
+
+	private static Set<Node> terminalNodes = null;
+
 	private int id;
 
 	private StateMachine stateMachine;
@@ -31,15 +41,20 @@ public class TreeSearchWorker implements Runnable
 		this.id = id;
 	}
 
+	public static void globalInit()
+	{
+		nodesVisited = 0;
+		nodesUpdated = 0;
+
+		terminalNodes = Collections.synchronizedSet(new HashSet<Node>());
+	}
+
 	public void init(StateMachine stateMachine, Role role)
 	{
 		this.stateMachine = new CachedStateMachine(stateMachine);
 		this.role = role;
 		this.root = null;
 		this.newRoot = null;
-
-		nodesVisited = 0;
-		nodesUpdated = 0;
 	}
 
 	public void setRoot(Node root)
@@ -52,6 +67,24 @@ public class TreeSearchWorker implements Runnable
 		this.root = this.newRoot;
 	}
 
+	private static boolean emptyResults()
+	{
+		if (nodesVisited == 0)
+		{
+			return false;
+		}
+
+		for (int i = 0; i < searchResults.length; i++)
+		{
+			if (searchResults[i] != null)
+			{
+				return false;
+			}
+		}
+
+		return true;
+	}
+
 	@Override
 	public void run()
 	{
@@ -62,13 +95,48 @@ public class TreeSearchWorker implements Runnable
 		{
 			try
 			{
+				if (!usePriorityQueue && emptyResults())
+				{
+					usePriorityQueue = true;
+					System.out.println("Turning on queues");
+				}
+
 				update();
-				treeSearch();
+				if (!root.completed)
+				{
+					treeSearch();
+				}
+				else
+				{
+					backPropagateOnTerminalNodes();
+				}
 			}
+
 			// catch all exceptions
 			catch (Exception e)
 			{
 				e.printStackTrace();
+			}
+		}
+	}
+
+	private void backPropagateOnTerminalNodes()
+	{
+		System.out.println("From thread " + Thread.currentThread().getName());
+		System.out.println("Back prop on terminal nodes");
+		System.out.println("Size " + terminalNodes.size());
+		for (Node node : terminalNodes)
+		{
+			try
+			{
+				int score = stateMachine.getGoal(node.state, role);
+				System.out.println("Backpropagating score " + score);
+				backPropagate(node, score, 1, false);
+			}
+			catch (GoalDefinitionException e)
+			{
+				// this is a common occurrence
+				// just ignore it
 			}
 		}
 	}
@@ -79,6 +147,7 @@ public class TreeSearchWorker implements Runnable
 
 		if (node != null)
 		{
+			searchResults[id] = node;
 			nodesVisited++;
 
 			if (!stateMachine.findTerminalp(node.state))
@@ -102,14 +171,17 @@ public class TreeSearchWorker implements Runnable
 					}
 				}
 
-				backPropogate(node, totalScore, visits);
+				backPropagate(node, totalScore, visits, node.completed);
 			}
 			else
 			{
+				terminalNodes.add(node);
+
 				try
 				{
+					node.completed = true;
 					int score = stateMachine.getGoal(node.state, role);
-					backPropogate(node, score, 1);
+					backPropagate(node, score, 1, true);
 				}
 				catch (GoalDefinitionException e)
 				{
@@ -124,9 +196,9 @@ public class TreeSearchWorker implements Runnable
 
 	public static void printStats()
 	{
-		System.out.println("From thread " + Thread.currentThread().getName());
-		System.out.println("Nodes visited: " + nodesVisited);
-		System.out.println("Nodes updated: " + nodesUpdated);
+		//System.out.println("From thread " + Thread.currentThread().getName());
+		//System.out.println("Nodes visited: " + nodesVisited);
+		//System.out.println("Nodes updated: " + nodesUpdated);
 	}
 
 	private Node select(Node node)
@@ -152,26 +224,52 @@ public class TreeSearchWorker implements Runnable
 			}
 		}
 
-		double score = 0;
-		Node result = node;
-		for (Node child : node.children)
+		if (!node.children.isEmpty())
 		{
-			double newScore = selectFn(child);
-			// System.out.println(newScore);
-			if (newScore > score)
+			if (!usePriorityQueue)
 			{
-				score = newScore;
-				result = child;
+				double score = 0;
+				Node result = null;
+				for (Node child : node.children)
+				{
+					double newScore = selectFn(child);
+					// System.out.println(newScore);
+					if (newScore > score)
+					{
+						score = newScore;
+						result = child;
+					}
+				}
+
+				if (result != null)
+				{
+					return select(result);
+				}
+			}
+			else
+			{
+				PriorityQueue<Node> queue = new PriorityQueue<>(Node.comparator);
+				queue.addAll(node.children);
+
+				//System.out.println("Using priority queue size" + queue.size());
+
+				while (!queue.isEmpty())
+				{
+					Node result = select(queue.peek());
+
+					if (result != null)
+					{
+						return result;
+					}
+					else
+					{
+						queue.poll();
+					}
+				}
 			}
 		}
 
-		if (result != node)
-		{
-			return select(result);
-		}
-
 		return null;
-
 	}
 
 	private List<List<Move>> findAllMoves(Node node) throws MoveDefinitionException
@@ -207,7 +305,6 @@ public class TreeSearchWorker implements Runnable
 		List<List<Move>> moves = findAllMoves(node);
 		for (List<Move> m : moves)
 		{
-			//List<Move> nextMoves = utility.getOrderedMoves(m, role, node.state);
 			MachineState newState = stateMachine.getNextState(node.state, m);
 			Node newNode = new Node(node, newState, m, !node.max);
 
@@ -215,22 +312,45 @@ public class TreeSearchWorker implements Runnable
 		}
 	}
 
-	private void backPropogate(Node node, int totalScore, int visits)
+	private void backPropagate(Node node, int totalScore, int visits, boolean isCompleted)
 	{
 		synchronized (node)
 		{
 			node.visit += visits;
 			node.utility += totalScore;
 			nodesUpdated += visits;
+
+			if (isCompleted && !root.completed)
+			{
+				int childrenSize = node.children.size();
+				if (childrenSize == 0)
+				{
+					node.completed = true;
+				}
+				else
+				{
+					node.completedChildren++;
+					if (node.completedChildren == childrenSize)
+					{
+						node.completed = true;
+					}
+					else if (node.completedChildren > childrenSize)
+					{
+						System.out.println("MISCOUNT");
+						System.out.println("Completed children count: " + node.completedChildren);
+						System.out.println("Children size: " + childrenSize);
+					}
+				}
+			}
 		}
 
 		if (node.parent != null)
 		{
-			backPropogate(node.parent, totalScore, visits);
+			backPropagate(node.parent, totalScore, visits, node.completed);
 		}
 	}
 
-	private double selectFn(Node node)
+	public static double selectFn(Node node)
 	{
 		synchronized (node)
 		{
