@@ -68,7 +68,7 @@ public class MonteCarloTreeSearchGamer extends SampleGamer
 
 		childStates.clear();
 
-		root = new Node(null, getCurrentState(), null, true);
+		updateRoot(getCurrentState());
 
 		updateWorkers(root);
 		startWorkers();
@@ -182,11 +182,9 @@ public class MonteCarloTreeSearchGamer extends SampleGamer
 			// see if we can find an immediate winning move
 			if (!opponentHasMoves && utility.isWinningState(child.state))
 			{
-				{
-					System.out.println("Performing winning move");
-					System.out.println(m);
-					return m;
-				}
+				System.out.println("Performing winning move");
+				System.out.println(m);
+				return m;
 			}
 
 			int score;
