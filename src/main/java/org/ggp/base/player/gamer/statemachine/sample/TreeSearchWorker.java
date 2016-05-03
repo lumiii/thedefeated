@@ -1,6 +1,5 @@
 package org.ggp.base.player.gamer.statemachine.sample;
 
-import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
@@ -21,7 +20,7 @@ public class TreeSearchWorker implements Runnable
 	private volatile static int nodesVisited = 0;
 	private volatile static int nodesUpdated = 0;
 
-	private volatile static Node[] searchResults = new Node[Parameters.NUM_CORES];
+	private volatile static Node[] searchResults = null;
 
 	private volatile static boolean usePriorityQueue = false;
 
@@ -36,17 +35,20 @@ public class TreeSearchWorker implements Runnable
 
 	private Node newRoot;
 
+	private GameUtilities utility;
+
 	public TreeSearchWorker(int id)
 	{
 		this.id = id;
 	}
 
-	public static void globalInit()
+	public static void globalInit(int numWorkers)
 	{
 		nodesVisited = 0;
 		nodesUpdated = 0;
 
 		terminalNodes = Collections.synchronizedSet(new HashSet<Node>());
+		searchResults = new Node[numWorkers];
 	}
 
 	public void init(StateMachine stateMachine, Role role)
@@ -55,6 +57,7 @@ public class TreeSearchWorker implements Runnable
 		this.role = role;
 		this.root = null;
 		this.newRoot = null;
+		this.utility = new GameUtilities(stateMachine, role);
 	}
 
 	public void setRoot(Node root)
@@ -64,7 +67,11 @@ public class TreeSearchWorker implements Runnable
 
 	private void update()
 	{
-		this.root = this.newRoot;
+		if (this.root != this.newRoot)
+		{
+			this.root = this.newRoot;
+			System.out.println("Thread " + Thread.currentThread().getName() + " active");
+		}
 	}
 
 	private static boolean emptyResults()
@@ -189,16 +196,13 @@ public class TreeSearchWorker implements Runnable
 					// just ignore it
 				}
 			}
-
-			printStats();
 		}
 	}
 
 	public static void printStats()
 	{
-		//System.out.println("From thread " + Thread.currentThread().getName());
-		//System.out.println("Nodes visited: " + nodesVisited);
-		//System.out.println("Nodes updated: " + nodesUpdated);
+		System.out.println("Nodes visited: " + nodesVisited);
+		System.out.println("Nodes updated: " + nodesUpdated);
 	}
 
 	private Node select(Node node)
@@ -272,37 +276,9 @@ public class TreeSearchWorker implements Runnable
 		return null;
 	}
 
-	private List<List<Move>> findAllMoves(Node node) throws MoveDefinitionException
-	{
-		List<List<Move>> moves = new ArrayList<List<Move>>();
-		List<Role> roles = stateMachine.getRoles();
-
-		moves.add(new ArrayList<Move>());
-
-		for(Role r : roles)
-		{
-			List<Move> roleMoves = stateMachine.findLegals(r, node.state);
-			List<List<Move>> newMoves = new ArrayList<List<Move>>();
-
-			for (List<Move> l : moves)
-			{
-				for(Move m : roleMoves)
-				{
-					ArrayList<Move> tempList = new ArrayList<Move>(l);
-					tempList.add(m);
-					newMoves.add(tempList);
-				}
-			}
-
-			moves = newMoves;
-		}
-
-		return moves;
-	}
-
 	private void expand(Node node) throws MoveDefinitionException, TransitionDefinitionException
 	{
-		List<List<Move>> moves = findAllMoves(node);
+		List<List<Move>> moves = utility.findAllMoves(node.state);
 		for (List<Move> m : moves)
 		{
 			MachineState newState = stateMachine.getNextState(node.state, m);

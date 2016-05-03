@@ -2,22 +2,28 @@ package org.ggp.base.player.gamer.statemachine.sample;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Random;
 
 import org.ggp.base.util.statemachine.MachineState;
 import org.ggp.base.util.statemachine.Move;
 import org.ggp.base.util.statemachine.Role;
 import org.ggp.base.util.statemachine.StateMachine;
+import org.ggp.base.util.statemachine.exceptions.GoalDefinitionException;
 import org.ggp.base.util.statemachine.exceptions.MoveDefinitionException;
 
 public class GameUtilities
 {
+	public static final int WIN_SCORE = 100;
+
 	private StateMachine stateMachine;
-	private Role role;
+	private Role playerRole;
+	private Random rng;
 
 	public GameUtilities(StateMachine stateMachine, Role role)
 	{
 		this.stateMachine = stateMachine;
-		this.role = role;
+		this.playerRole = role;
+		this.rng = new Random();
 	}
 
 	public boolean isSinglePlayer()
@@ -37,7 +43,7 @@ public class GameUtilities
 
 		for (Role r : roles)
 		{
-			if (!r.equals(role))
+			if (!r.equals(playerRole))
 			{
 				return r;
 			}
@@ -46,16 +52,10 @@ public class GameUtilities
 		return null;
 	}
 
-	public List<Move> getOrderedMoves(Move move, Role moveOwner, MachineState currentState)
+	public List<Move> getRandomJointMove(Move move, Role moveOwner, MachineState currentState)
 			throws MoveDefinitionException
 	{
 		List<Role> roles = stateMachine.findRoles();
-
-		if (roles.size() > 2)
-		{
-			throw new ArrayIndexOutOfBoundsException("Unexpected: more than 2 players");
-		}
-
 		List<Move> moves = new ArrayList<Move>();
 
 		for (Role role : roles)
@@ -71,5 +71,85 @@ public class GameUtilities
 		}
 
 		return moves;
+	}
+
+	public Move getRandomMove(MachineState currentState) throws MoveDefinitionException
+	{
+		List<Move> moveList = stateMachine.findLegals(playerRole, currentState);
+		int randomIndex = rng.nextInt(moveList.size());
+
+		return moveList.get(randomIndex);
+	}
+
+	public List<List<Move>> findAllMoves(MachineState state) throws MoveDefinitionException
+	{
+		List<List<Move>> moves = new ArrayList<List<Move>>();
+		List<Role> roles = stateMachine.getRoles();
+
+		moves.add(new ArrayList<Move>());
+
+		for(Role r : roles)
+		{
+			List<Move> roleMoves = stateMachine.findLegals(r, state);
+			List<List<Move>> newMoves = new ArrayList<List<Move>>();
+
+			for (List<Move> l : moves)
+			{
+				for(Move m : roleMoves)
+				{
+					ArrayList<Move> tempList = new ArrayList<Move>(l);
+					tempList.add(m);
+					newMoves.add(tempList);
+				}
+			}
+
+			moves = newMoves;
+		}
+
+		return moves;
+	}
+
+	public boolean opponentHasMoves(MachineState currentState) throws MoveDefinitionException
+	{
+		// check if all opponents have any choice
+		// if they have no choices (alternating game)
+		// then we can possibly force a win
+		List<Role> roles = stateMachine.getRoles();
+		for (Role role : roles)
+		{
+			if (!playerRole.equals(role))
+			{
+				List<Move> opponentMoves = stateMachine.getLegalMoves(currentState, role);
+				if (opponentMoves.size() > 1)
+				{
+					return true;
+				}
+			}
+		}
+
+		return false;
+	}
+
+	// winning state if score == 100
+
+	public boolean isWinningState(MachineState state)
+	{
+		if (stateMachine.findTerminalp(state))
+		{
+			try
+			{
+				int goalScore = stateMachine.getGoal(state, playerRole);
+				if (goalScore >= WIN_SCORE)
+				{
+					return true;
+				}
+			}
+			catch (GoalDefinitionException e)
+			{
+				e.printStackTrace();
+			}
+		}
+		
+		return false;
 	}
 }

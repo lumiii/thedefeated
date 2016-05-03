@@ -2,11 +2,9 @@ package org.ggp.base.player.gamer.statemachine.sample;
 
 import java.util.Date;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
-import java.util.Set;
 
 import org.ggp.base.util.statemachine.MachineState;
 import org.ggp.base.util.statemachine.Move;
@@ -20,25 +18,20 @@ public class MonteCarloTreeSearchGamer extends SampleGamer
 {
 	private long endTime = 0;
 
-	// private ExecutorService threadPool;
 	private Thread[] threads = new Thread[Parameters.NUM_CORES];
 	private TreeSearchWorker[] workers = new TreeSearchWorker[Parameters.NUM_CORES];
 	private Map<MachineState, Node> childStates = new HashMap<>();
-	private Set<MachineState> previousStates = new HashSet<>();
 	private Node root = null;
 	private GameUtilities utility;
 
 	public MonteCarloTreeSearchGamer()
 	{
 		Thread.currentThread().setPriority(Parameters.MAIN_THREAD_PRIORITY);
-		// get a thread safe set via a map
 		for (int i = 0; i < workers.length; i++)
 		{
 			workers[i] = new TreeSearchWorker(i);
 			threads[i] = new Thread(workers[i]);
 		}
-
-		// threadPool = Executors.newFixedThreadPool(Parameters.NUM_CORES);
 	}
 
 	@Override
@@ -64,7 +57,7 @@ public class MonteCarloTreeSearchGamer extends SampleGamer
 		StateMachine stateMachine = getStateMachine();
 		Role role = getRole();
 
-		TreeSearchWorker.globalInit();
+		TreeSearchWorker.globalInit(workers.length);
 
 		for (int i = 0; i < workers.length; i++)
 		{
@@ -74,8 +67,6 @@ public class MonteCarloTreeSearchGamer extends SampleGamer
 		utility = new GameUtilities(stateMachine, role);
 
 		childStates.clear();
-		previousStates.clear();
-		previousStates.add(getCurrentState());
 
 		root = new Node(null, getCurrentState(), null, true);
 
@@ -96,30 +87,7 @@ public class MonteCarloTreeSearchGamer extends SampleGamer
 		StateMachine stateMachine = getStateMachine();
 		MachineState currentState = getCurrentState();
 
-		// TODO: evaluate whether we really need this or not
-		previousStates.add(currentState);
-
-		if (root == null)
-		{
-			root = new Node(null, currentState, null, true);
-		}
-		else
-		{
-			Node childNode = childStates.get(currentState);
-
-			if (childNode != null)
-			{
-				root = childNode;
-				root.parent = null;
-			}
-			else
-			{
-				root = new Node(null, currentState, null, true);
-			}
-
-			childStates.clear();
-		}
-
+		updateRoot(currentState);
 		updateWorkers(root);
 
 		System.out.println("Before waiting");
@@ -128,84 +96,18 @@ public class MonteCarloTreeSearchGamer extends SampleGamer
 
 		Role role = getRole();
 
-		boolean singleMove = (stateMachine.findLegals(role, currentState).size() == 1);
+		List<Move> moves = stateMachine.findLegals(role, currentState);
 
 		Move bestMove = null;
-
-		if (singleMove)
+		if (moves.size() > 1)
 		{
-			bestMove = stateMachine.findLegalx(role, currentState);
-		}
-		else
-		{
-			System.out.println("Computing score...");
-			int maxScore = 0;
-
-			System.out.println("Iterating through " + root.children.size());
-
-			Map<Move, Integer> moveScore = new HashMap<Move, Integer>();
-			Map<Move, Integer> moveCount = new HashMap<Move, Integer>();
-			for (Move m : stateMachine.findLegals(getRole(), currentState))
-			{
-				moveScore.put(m, 0);
-				moveCount.put(m, 0);
-				// System.out.println(m.getContents());
-			}
-			int roleIndex = 0;
-			for (roleIndex = 0; !stateMachine.getRoles().get(roleIndex).equals(getRole()); roleIndex++)
-				;
-
-			for (Node child : root.children)
-			{
-				int score;
-				if (child.visit == 0)
-				{
-					score = 0;
-				}
-				else
-				{
-					score = child.utility / child.visit;
-				}
-
-				Move m = child.move.get(roleIndex);
-				// System.out.println(m.getContents());
-				moveScore.put(m, moveScore.get(m) + score);
-				moveCount.put(m, moveCount.get(m) + 1);
-			}
-
-			for (Entry<Move, Integer> move : moveScore.entrySet())
-			{
-				Move m = move.getKey();
-				int count = moveCount.get(m);
-				int score = 0;
-				if (count > 0)
-				{
-					score = move.getValue() / moveCount.get(m);
-				}
-
-				if (score > maxScore)
-				{
-					maxScore = score;
-					bestMove = m;
-				}
-			}
-
-			System.out.println("Finished iterating");
+			bestMove = selectBestMove(currentState, moves);
 		}
 
-		// make sure to have at least one move to return
-		// in the case that all scores come back as 0
-
-		// TODO: hacky, see if there's a better way to do this
+		// if no choices or no good moves were found
 		if (bestMove == null)
 		{
-			System.out.println("No best move, getting unvisited");
-			bestMove = getUnvisitedMove();
-			System.out.println("Finished getting unvisited");
-			if (bestMove == null)
-			{
-				bestMove = stateMachine.findLegalx(getRole(), currentState);
-			}
+			bestMove = utility.getRandomMove(currentState);
 		}
 
 		for (Node child : root.children)
@@ -216,33 +118,15 @@ public class MonteCarloTreeSearchGamer extends SampleGamer
 		setTimeout(0);
 
 		System.out.println("All done");
+		TreeSearchWorker.printStats();
+
 		return bestMove;
-	}
-
-	private Move getUnvisitedMove() throws MoveDefinitionException, TransitionDefinitionException
-	{
-		StateMachine stateMachine = getStateMachine();
-		MachineState currentState = getCurrentState();
-		Role role = getRole();
-		List<Move> moveList = stateMachine.findLegals(role, currentState);
-		for (Move move : moveList)
-		{
-			List<Move> jointMove = utility.getOrderedMoves(move, role, currentState);
-			MachineState nextState = stateMachine.findNext(jointMove, currentState);
-			if (!previousStates.contains(nextState))
-			{
-				return move;
-			}
-		}
-
-		return null;
 	}
 
 	private void startWorkers()
 	{
 		for (int i = 0; i < workers.length; i++)
 		{
-			// threadPool.submit(workers[i]);
 			threads[i].setName("TreeSearchWorker-" + i);
 			threads[i].setPriority(Parameters.WORKER_THREAD_PRIORITY);
 			threads[i].start();
@@ -251,8 +135,6 @@ public class MonteCarloTreeSearchGamer extends SampleGamer
 
 	private void stopWorkers()
 	{
-		// threadPool.shutdownNow();
-		// threadPool = Executors.newFixedThreadPool(Parameters.NUM_CORES);
 		for (int i = 0; i < workers.length; i++)
 		{
 			threads[i].interrupt();
@@ -273,6 +155,102 @@ public class MonteCarloTreeSearchGamer extends SampleGamer
 			catch (InterruptedException e)
 			{
 			}
+		}
+	}
+
+	private Move selectBestMove(MachineState currentState, List<Move> moves) throws MoveDefinitionException
+	{
+		StateMachine stateMachine = getStateMachine();
+		Map<Move, Integer> moveScore = new HashMap<Move, Integer>();
+		Map<Move, Integer> moveCount = new HashMap<Move, Integer>();
+		for (Move m : moves)
+		{
+			moveScore.put(m, 0);
+			moveCount.put(m, 0);
+			// System.out.println(m.getContents());
+		}
+		int roleIndex = 0;
+		for (roleIndex = 0; !stateMachine.getRoles().get(roleIndex).equals(getRole()); roleIndex++)
+			;
+
+		boolean opponentHasMoves = utility.opponentHasMoves(currentState);
+
+		for (Node child : root.children)
+		{
+			Move m = child.move.get(roleIndex);
+
+			// see if we can find an immediate winning move
+			if (!opponentHasMoves && utility.isWinningState(child.state))
+			{
+				{
+					System.out.println("Performing winning move");
+					System.out.println(m);
+					return m;
+				}
+			}
+
+			int score;
+			if (child.visit == 0)
+			{
+				score = 0;
+			}
+			else
+			{
+				score = child.utility / child.visit;
+			}
+
+
+			// System.out.println(m.getContents());
+			moveScore.put(m, moveScore.get(m) + score);
+			moveCount.put(m, moveCount.get(m) + 1);
+		}
+
+		int maxScore = 0;
+		Move bestMove = null;
+		for (Entry<Move, Integer> move : moveScore.entrySet())
+		{
+			Move m = move.getKey();
+			int count = moveCount.get(m);
+			int score = 0;
+			if (count > 0)
+			{
+				score = move.getValue() / moveCount.get(m);
+			}
+
+			if (score > maxScore)
+			{
+				maxScore = score;
+				bestMove = m;
+			}
+		}
+
+		System.out.println("Best score: " + maxScore);
+		System.out.println("Best move: " + bestMove);
+
+		return bestMove;
+	}
+
+	private void updateRoot(MachineState currentState)
+	{
+		if (root == null)
+		{
+			root = new Node(null, currentState, null, true);
+		}
+		else
+		{
+			Node childNode = childStates.get(currentState);
+
+			if (childNode != null)
+			{
+				root = childNode;
+				root.parent = null;
+			}
+			else
+			{
+				root = new Node(null, currentState, null, true);
+			}
+
+			childStates.clear();
 		}
 	}
 
