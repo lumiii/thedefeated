@@ -214,6 +214,7 @@ public class TreeSearchWorker implements Runnable
 					// just ignore it
 				}
 			}
+			printStats();
 		}
 	}
 
