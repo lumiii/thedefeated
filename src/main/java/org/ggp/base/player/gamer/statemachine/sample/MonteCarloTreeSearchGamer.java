@@ -209,7 +209,7 @@ public class MonteCarloTreeSearchGamer extends SampleGamer
 			}
 			else
 			{
-				score = child.utilities[roleIndex] / child.visit;
+				score = child.utility / child.visit;
 			}
 
 			// System.out.println(m.getContents());

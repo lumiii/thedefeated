@@ -10,7 +10,10 @@ import org.ggp.base.util.statemachine.Move;
 
 public class Node
 {
-	public int[] utilities;
+	public static NodeComparator comparator = new NodeComparator(false);
+	public static NodeComparator reverseComparator = new NodeComparator(true);
+
+	public int utility;
 	public int visit;
 
 	public final boolean maxNode;
@@ -26,7 +29,7 @@ public class Node
 
 	public Node(Node par, MachineState stat, List<Move> m, int roleSize, boolean playerHasChoice)
 	{
-		utilities = new int[roleSize];
+		utility = 0;
 		visit = 0;
 		selected = false;
 		parent = par;
@@ -40,17 +43,17 @@ public class Node
 
 	public static class NodeComparator implements Comparator<Node>
 	{
-		private int roleIndex;
-		public NodeComparator(int roleIndex)
+		private boolean reverse;
+		public NodeComparator(boolean reverse)
 		{
-			this.roleIndex = roleIndex;
+			this.reverse = reverse;
 		}
 
 		@Override
 		public int compare(Node o1, Node o2)
 		{
-			double n1 = TreeSearchWorker.selectFn(o1, roleIndex);
-			double n2 = TreeSearchWorker.selectFn(o2, roleIndex);
+			double n1 = TreeSearchWorker.selectFn(o1);
+			double n2 = TreeSearchWorker.selectFn(o2);
 
 			int result = 0;
 			if (n1 < n2)
@@ -60,6 +63,11 @@ public class Node
 			else if (n2 < n1)
 			{
 				result = -1;
+			}
+
+			if (reverse)
+			{
+				result *= -1;
 			}
 
 			return result;
