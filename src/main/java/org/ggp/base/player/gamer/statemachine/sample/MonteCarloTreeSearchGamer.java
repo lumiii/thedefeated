@@ -39,13 +39,24 @@ public class MonteCarloTreeSearchGamer extends SampleGamer
 	{
 		System.out.println("Stop called");
 		stopWorkers();
+		endGame();
 	}
 
 	@Override
 	public void stateMachineAbort()
 	{
 		System.out.println("Abort called");
+		endGame();
+	}
+
+	private void endGame()
+	{
 		stopWorkers();
+		root = null;
+		childStates.clear();
+
+		TreeSearchWorker.printStats();
+		TreeSearchWorker.globalCleanup();
 	}
 
 	@Override
@@ -108,6 +119,7 @@ public class MonteCarloTreeSearchGamer extends SampleGamer
 		if (bestMove == null)
 		{
 			bestMove = utility.getRandomMove(currentState);
+			System.out.println("Playing random move: " + bestMove);
 		}
 
 		for (Node child : root.children)
@@ -140,8 +152,6 @@ public class MonteCarloTreeSearchGamer extends SampleGamer
 			threads[i].interrupt();
 			threads[i] = new Thread(workers[i]);
 		}
-
-		TreeSearchWorker.printStats();
 	}
 
 	private void waitForTimeout()
@@ -160,7 +170,6 @@ public class MonteCarloTreeSearchGamer extends SampleGamer
 
 	private Move selectBestMove(MachineState currentState, List<Move> moves) throws MoveDefinitionException
 	{
-		StateMachine stateMachine = getStateMachine();
 		Map<Move, Integer> moveScore = new HashMap<Move, Integer>();
 		Map<Move, Integer> moveCount = new HashMap<Move, Integer>();
 		for (Move m : moves)
@@ -169,9 +178,8 @@ public class MonteCarloTreeSearchGamer extends SampleGamer
 			moveCount.put(m, 0);
 			// System.out.println(m.getContents());
 		}
-		int roleIndex = 0;
-		for (roleIndex = 0; !stateMachine.getRoles().get(roleIndex).equals(getRole()); roleIndex++)
-			;
+
+		int roleIndex = utility.getPlayerRoleIndex();
 
 		boolean opponentHasMoves = utility.opponentHasMoves(currentState);
 
@@ -184,6 +192,7 @@ public class MonteCarloTreeSearchGamer extends SampleGamer
 			{
 				System.out.println("Performing winning move");
 				System.out.println(m);
+				System.out.println("Congratulations");
 				return m;
 			}
 
@@ -194,9 +203,8 @@ public class MonteCarloTreeSearchGamer extends SampleGamer
 			}
 			else
 			{
-				score = child.utility / child.visit;
+				score = child.utilities[roleIndex] / child.visit;
 			}
-
 
 			// System.out.println(m.getContents());
 			moveScore.put(m, moveScore.get(m) + score);
@@ -232,7 +240,7 @@ public class MonteCarloTreeSearchGamer extends SampleGamer
 	{
 		if (root == null)
 		{
-			root = new Node(null, currentState, null, true);
+			root = new Node(null, currentState, null, utility.getRoleSize(), true);
 		}
 		else
 		{
@@ -245,7 +253,7 @@ public class MonteCarloTreeSearchGamer extends SampleGamer
 			}
 			else
 			{
-				root = new Node(null, currentState, null, true);
+				root = new Node(null, currentState, null, utility.getRoleSize(), true);
 			}
 
 			childStates.clear();

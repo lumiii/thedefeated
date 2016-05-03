@@ -18,12 +18,15 @@ public class GameUtilities
 	private StateMachine stateMachine;
 	private Role playerRole;
 	private Random rng;
+	private final int roleSize;
 
 	public GameUtilities(StateMachine stateMachine, Role role)
 	{
 		this.stateMachine = stateMachine;
 		this.playerRole = role;
 		this.rng = new Random();
+
+		this.roleSize = stateMachine.getRoles().size();
 	}
 
 	public boolean isSinglePlayer()
@@ -109,6 +112,13 @@ public class GameUtilities
 		return moves;
 	}
 
+	public boolean playerHasMoves(MachineState currentState) throws MoveDefinitionException
+	{
+		List<Move> playerMoves = stateMachine.getLegalMoves(currentState, playerRole);
+
+		return playerMoves.size() > 1;
+	}
+
 	public boolean opponentHasMoves(MachineState currentState) throws MoveDefinitionException
 	{
 		// check if all opponents have any choice
@@ -149,7 +159,54 @@ public class GameUtilities
 				e.printStackTrace();
 			}
 		}
-		
+
 		return false;
+	}
+
+	public int getRoleSize()
+	{
+		return roleSize;
+	}
+
+	public int[] getScoreForAllRoles(MachineState state) throws GoalDefinitionException
+	{
+		int[] scores = new int[roleSize];
+		List<Role> roles = stateMachine.getRoles();
+		int index = 0;
+		for (Role role : roles)
+		{
+			int score = stateMachine.getGoal(state, role);
+			scores[index] = score;
+			index++;
+		}
+
+		return scores;
+	}
+
+	public int getPlayerRoleIndex()
+	{
+		return getRoleIndex(playerRole);
+	}
+
+	public int getFirstOpponentRoleIndex()
+	{
+		int playerRoleIndex = getPlayerRoleIndex();
+		if (roleSize > 1)
+		{
+			if (playerRoleIndex == 0)
+			{
+				return 1;
+			}
+
+			return 0;
+		}
+
+		return -1;
+	}
+
+	public int getRoleIndex(Role role)
+	{
+		List<Role> roles = stateMachine.getRoles();
+		return roles.indexOf(role);
 	}
 }

@@ -4,3 +4,5 @@
 /.gradle/
 /build/
 /out/
+
+src/main/java/org/ggp/base/player/gamer/statemachine/sample/Parameters.java
