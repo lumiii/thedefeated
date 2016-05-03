@@ -223,6 +223,8 @@ public class MonteCarloTreeSearchGamer extends SampleGamer
 				score = move.getValue() / moveCount.get(m);
 			}
 
+			System.out.println("Considering move");
+			System.out.println(score + " : " + m);
 			if (score > maxScore)
 			{
 				maxScore = score;
@@ -230,8 +232,8 @@ public class MonteCarloTreeSearchGamer extends SampleGamer
 			}
 		}
 
-		System.out.println("Best score: " + maxScore);
-		System.out.println("Best move: " + bestMove);
+		System.out.println("Best move: ");
+		System.out.println(maxScore + " : " + bestMove);
 
 		return bestMove;
 	}

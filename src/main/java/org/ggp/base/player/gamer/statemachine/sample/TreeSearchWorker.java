@@ -88,6 +88,7 @@ public class TreeSearchWorker implements Runnable
 		{
 			this.root = this.newRoot;
 			System.out.println("Thread " + Thread.currentThread().getName() + " active");
+			TreeSearchWorker.printStats();
 		}
 	}
 
@@ -214,7 +215,6 @@ public class TreeSearchWorker implements Runnable
 					// just ignore it
 				}
 			}
-			printStats();
 		}
 	}
 
