@@ -156,11 +156,17 @@ public class MonteCarloTreeSearchGamer extends SampleGamer
 
 	private void waitForTimeout()
 	{
+		long sleepTime = getRemainingTime() / 4;
 		while (!isTimeout())
 		{
 			try
 			{
-				Thread.sleep(getRemainingTime());
+				if (getRemainingTime() < sleepTime)
+				{
+					sleepTime = getRemainingTime();
+				}
+
+				Thread.sleep(sleepTime);
 			}
 			catch (InterruptedException e)
 			{
