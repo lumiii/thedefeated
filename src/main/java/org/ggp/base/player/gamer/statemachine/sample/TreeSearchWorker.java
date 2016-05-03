@@ -7,6 +7,7 @@ import java.util.List;
 import java.util.PriorityQueue;
 import java.util.Set;
 
+import org.ggp.base.player.gamer.statemachine.sample.Parameters.Experiments;
 import org.ggp.base.util.statemachine.MachineState;
 import org.ggp.base.util.statemachine.Move;
 import org.ggp.base.util.statemachine.Role;
@@ -261,7 +262,7 @@ public class TreeSearchWorker implements Runnable
 		{
 			int roleIndex;
 
-			if (Parameters.EMULATE_OPPONENT)
+			if (Parameters.experimentflag == Experiments.emulate_opponent)
 			{
 				if (node.maxNode)
 				{
@@ -277,19 +278,41 @@ public class TreeSearchWorker implements Runnable
 				roleIndex = utility.getPlayerRoleIndex();
 			}
 
-			if (!usePriorityQueue)
+			if (true /*!usePriorityQueue*/)
 			{
 				double score = 0;
+				if (Parameters.experimentflag == Experiments.minimax)
+				{
+					if (!node.maxNode)
+					{
+						score = 10000;
+					}
+				}
+
 				Node result = null;
 
 				for (Node child : node.children)
 				{
 					double newScore = selectFn(child, roleIndex);
-					if (newScore > score)
+
+					if (Parameters.experimentflag == Experiments.minimax
+							&& !node.maxNode)
 					{
-						score = newScore;
-						result = child;
+						if (newScore < score)
+						{
+							score = newScore;
+							result = child;
+						}
 					}
+					else
+					{
+						if (newScore > score)
+						{
+							score = newScore;
+							result = child;
+						}
+					}
+
 				}
 
 				if (result != null)
