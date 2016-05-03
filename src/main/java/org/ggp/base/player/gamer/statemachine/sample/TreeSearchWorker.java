@@ -1,13 +1,11 @@
 package org.ggp.base.player.gamer.statemachine.sample;
 
-import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
 import java.util.PriorityQueue;
 import java.util.Set;
 
-import org.ggp.base.player.gamer.statemachine.sample.Parameters.Experiments;
 import org.ggp.base.util.statemachine.MachineState;
 import org.ggp.base.util.statemachine.Move;
 import org.ggp.base.util.statemachine.Role;
@@ -157,9 +155,8 @@ public class TreeSearchWorker implements Runnable
 		{
 			try
 			{
-				int[] roleScores = utility.getScoreForAllRoles(node.state);
-				System.out.println("Backpropagating score " + Arrays.toString(roleScores));
-				backPropagate(node, roleScores, 1, false);
+				int score = stateMachine.getGoal(node.state, playerRole);
+				backPropagate(node, score, 1, false);
 			}
 			catch (GoalDefinitionException e)
 			{
@@ -184,22 +181,13 @@ public class TreeSearchWorker implements Runnable
 
 				int visits = 0;
 
-				List<Role> roles = stateMachine.getRoles();
-
-				int[] roleScores = new int[utility.getRoleSize()];
+				int totalScore = 0;
 				for (int i = 0; i < Parameters.DEPTH_CHARGE_COUNT; i++)
 				{
 					try
 					{
 						MachineState terminalState = stateMachine.performDepthCharge(node.state, null);
-
-						int index = 0;
-						for (Role role : roles)
-						{
-							roleScores[index] += stateMachine.getGoal(terminalState, role);
-							index++;
-						}
-
+						totalScore += stateMachine.getGoal(terminalState, playerRole);
 						visits++;
 					}
 					catch (GoalDefinitionException | TransitionDefinitionException | MoveDefinitionException e)
@@ -208,7 +196,7 @@ public class TreeSearchWorker implements Runnable
 					}
 				}
 
-				backPropagate(node, roleScores, visits, node.completed);
+				backPropagate(node, totalScore, visits, node.completed);
 			}
 			else
 			{
@@ -217,8 +205,8 @@ public class TreeSearchWorker implements Runnable
 				try
 				{
 					node.completed = true;
-					int[] roleScores = utility.getScoreForAllRoles(node.state);
-					backPropagate(node, roleScores, 1, true);
+					int score = stateMachine.getGoal(node.state, playerRole);
+					backPropagate(node, score, 1, true);
 				}
 				catch (GoalDefinitionException e)
 				{
@@ -226,6 +214,7 @@ public class TreeSearchWorker implements Runnable
 					// just ignore it
 				}
 			}
+			printStats();
 		}
 	}
 
@@ -260,51 +249,27 @@ public class TreeSearchWorker implements Runnable
 
 		if (!node.children.isEmpty())
 		{
-			int roleIndex;
-
-			if (Parameters.experimentflag == Experiments.emulate_opponent)
+			if (!usePriorityQueue)
 			{
+				double score;
+
 				if (node.maxNode)
 				{
-					roleIndex = utility.getPlayerRoleIndex();
+					score = 0;
 				}
 				else
 				{
-					roleIndex = utility.getFirstOpponentRoleIndex();
+					score = Double.MAX_VALUE;
 				}
-			}
-			else
-			{
-				roleIndex = utility.getPlayerRoleIndex();
-			}
 
-			if (true /*!usePriorityQueue*/)
-			{
-				double score = 0;
-				if (Parameters.experimentflag == Experiments.minimax)
-				{
-					if (!node.maxNode)
-					{
-						score = 10000;
-					}
-				}
 
 				Node result = null;
 
 				for (Node child : node.children)
 				{
-					double newScore = selectFn(child, roleIndex);
+					double newScore = selectFn(child);
 
-					if (Parameters.experimentflag == Experiments.minimax
-							&& !node.maxNode)
-					{
-						if (newScore < score)
-						{
-							score = newScore;
-							result = child;
-						}
-					}
-					else
+					if (node.maxNode)
 					{
 						if (newScore > score)
 						{
@@ -312,7 +277,14 @@ public class TreeSearchWorker implements Runnable
 							result = child;
 						}
 					}
-
+					else
+					{
+						if (newScore < score)
+						{
+							score = newScore;
+							result = child;
+						}
+					}
 				}
 
 				if (result != null)
@@ -322,7 +294,17 @@ public class TreeSearchWorker implements Runnable
 			}
 			else
 			{
-				PriorityQueue<Node> queue = new PriorityQueue<>(new Node.NodeComparator(roleIndex));
+				PriorityQueue<Node> queue;
+
+				if (node.maxNode)
+				{
+					queue = new PriorityQueue<>(Node.comparator);
+				}
+				else
+				{
+					queue = new PriorityQueue<>(Node.reverseComparator);
+				}
+
 				queue.addAll(node.children);
 
 				while (!queue.isEmpty())
@@ -356,17 +338,12 @@ public class TreeSearchWorker implements Runnable
 		}
 	}
 
-	private void backPropagate(Node node, int[] roleScores, int visits, boolean isCompleted)
+	private void backPropagate(Node node, int totalScore, int visits, boolean isCompleted)
 	{
 		synchronized (node)
 		{
 			node.visit += visits;
-
-			for (int i = 0; i < node.utilities.length; i++)
-			{
-				node.utilities[i] += roleScores[i];
-			}
-
+			node.utility += totalScore;
 			nodesUpdated += visits;
 
 			if (isCompleted && !root.completed)
@@ -389,11 +366,11 @@ public class TreeSearchWorker implements Runnable
 
 		if (node.parent != null)
 		{
-			backPropagate(node.parent, roleScores, visits, node.completed);
+			backPropagate(node.parent, totalScore, visits, node.completed);
 		}
 	}
 
-	public static double selectFn(Node node, int roleIndex)
+	public static double selectFn(Node node)
 	{
 		synchronized (node)
 		{
@@ -409,9 +386,7 @@ public class TreeSearchWorker implements Runnable
 				parentVisit = node.parent.visit;
 			}
 
-			int utility = node.utilities[roleIndex];
-
-			return (utility / node.visit
+			return (node.utility / node.visit
 					+ Parameters.EXPLORATION_FACTOR * Math.sqrt(2 * Math.log(parentVisit) / node.visit));
 		}
 	}

@@ -156,17 +156,11 @@ public class MonteCarloTreeSearchGamer extends SampleGamer
 
 	private void waitForTimeout()
 	{
-		long sleepTime = getRemainingTime() / 4;
 		while (!isTimeout())
 		{
 			try
 			{
-				if (getRemainingTime() < sleepTime)
-				{
-					sleepTime = getRemainingTime();
-				}
-
-				Thread.sleep(sleepTime);
+				Thread.sleep(getRemainingTime());
 			}
 			catch (InterruptedException e)
 			{
@@ -209,7 +203,7 @@ public class MonteCarloTreeSearchGamer extends SampleGamer
 			}
 			else
 			{
-				score = child.utilities[roleIndex] / child.visit;
+				score = child.utility / child.visit;
 			}
 
 			// System.out.println(m.getContents());

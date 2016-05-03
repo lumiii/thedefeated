@@ -7,16 +7,6 @@ public class Parameters
 	public static final int NUM_CORES = 2;
 	public static final int EXPLORATION_FACTOR = 50;
 	public static final int DEPTH_CHARGE_COUNT = 4;
-	public static final int SLEEP_SEGMENTS = 4;
-
-	enum Experiments
-	{
-		maximax,
-		minimax,
-		emulate_opponent
-	}
-
-	public static final Experiments experimentflag = Experiments.minimax;
 
 	// performance - use for competition
 	//private static final int THREAD_PRIORITY_BUMP = 2;
