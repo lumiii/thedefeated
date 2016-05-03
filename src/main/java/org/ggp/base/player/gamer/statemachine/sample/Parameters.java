@@ -14,5 +14,6 @@ public class Parameters
 	private static final int THREAD_PRIORITY_BUMP = 1;
 
 	public static final int WORKER_THREAD_PRIORITY = Thread.NORM_PRIORITY + THREAD_PRIORITY_BUMP;
+	public static final int MAIN_THREAD_PRIORITY = Thread.MAX_PRIORITY;
 
 }
