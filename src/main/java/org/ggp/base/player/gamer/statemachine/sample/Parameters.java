@@ -9,7 +9,14 @@ public class Parameters
 	public static final int DEPTH_CHARGE_COUNT = 4;
 	public static final int SLEEP_SEGMENTS = 4;
 
-	public static final boolean EMULATE_OPPONENT = false;
+	enum Experiments
+	{
+		maximax,
+		minimax,
+		emulate_opponent
+	}
+
+	public static final Experiments experimentflag = Experiments.minimax;
 
 	// performance - use for competition
 	//private static final int THREAD_PRIORITY_BUMP = 2;
