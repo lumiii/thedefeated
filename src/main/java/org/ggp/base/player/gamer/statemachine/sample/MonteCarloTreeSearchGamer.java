@@ -5,6 +5,8 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
+import java.util.Timer;
+import java.util.TimerTask;
 
 import org.ggp.base.util.statemachine.MachineState;
 import org.ggp.base.util.statemachine.Move;
@@ -22,7 +24,34 @@ public class MonteCarloTreeSearchGamer extends SampleGamer
 	private TreeSearchWorker[] workers = new TreeSearchWorker[MachineParameters.NUM_CORES];
 	private Map<MachineState, Node> childStates = new HashMap<>();
 	private Node root = null;
-	private GameUtilities utility;
+	private GameUtilities utility = null;
+
+	private Timer timer = null;
+	private ThreadTimer threadTimer = null;
+
+	class ThreadTimer extends TimerTask
+	{
+		Thread wakeupThread = null;
+		public ThreadTimer(Thread thread)
+		{
+			this.wakeupThread = thread;
+		}
+
+		public void setThread(Thread thread)
+		{
+			this.wakeupThread = thread;
+		}
+
+		@Override
+		public void run()
+		{
+			if (wakeupThread != null)
+			{
+				wakeupThread.interrupt();
+				System.out.println("Waking up thread");
+			}
+		}
+	}
 
 	public MonteCarloTreeSearchGamer()
 	{
@@ -33,6 +62,8 @@ public class MonteCarloTreeSearchGamer extends SampleGamer
 			workers[i] = new TreeSearchWorker(i);
 			threads[i] = new Thread(workers[i]);
 		}
+
+		timer = new Timer();
 	}
 
 	@Override
@@ -161,11 +192,20 @@ public class MonteCarloTreeSearchGamer extends SampleGamer
 		{
 			try
 			{
+				threadTimer = new ThreadTimer(Thread.currentThread());
+				timer.schedule(threadTimer, getRemainingTime());
 				Thread.sleep(getRemainingTime());
+				threadTimer.setThread(null);
 			}
 			catch (InterruptedException e)
 			{
+				if (Thread.interrupted())
+				{
+					System.out.println("Main thread correctly interrupted");
+				}
 			}
+
+			threadTimer = null;
 		}
 	}
 
