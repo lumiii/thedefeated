@@ -6,3 +6,4 @@
 /out/
 
 src/main/java/org/ggp/base/player/gamer/statemachine/sample/Parameters.java
+src/main/java/org/ggp/base/player/gamer/statemachine/sample/MachineParameters.java

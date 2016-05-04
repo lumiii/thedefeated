@@ -18,15 +18,15 @@ public class MonteCarloTreeSearchGamer extends SampleGamer
 {
 	private long endTime = 0;
 
-	private Thread[] threads = new Thread[Parameters.NUM_CORES];
-	private TreeSearchWorker[] workers = new TreeSearchWorker[Parameters.NUM_CORES];
+	private Thread[] threads = new Thread[MachineParameters.NUM_CORES];
+	private TreeSearchWorker[] workers = new TreeSearchWorker[MachineParameters.NUM_CORES];
 	private Map<MachineState, Node> childStates = new HashMap<>();
 	private Node root = null;
 	private GameUtilities utility;
 
 	public MonteCarloTreeSearchGamer()
 	{
-		Thread.currentThread().setPriority(Parameters.MAIN_THREAD_PRIORITY);
+		Thread.currentThread().setPriority(MachineParameters.MAIN_THREAD_PRIORITY);
 		for (int i = 0; i < workers.length; i++)
 		{
 			workers[i] = new TreeSearchWorker(i);
@@ -56,7 +56,6 @@ public class MonteCarloTreeSearchGamer extends SampleGamer
 		childStates.clear();
 
 		TreeSearchWorker.printStats();
-		TreeSearchWorker.globalCleanup();
 	}
 
 	@Override
@@ -68,7 +67,7 @@ public class MonteCarloTreeSearchGamer extends SampleGamer
 		StateMachine stateMachine = getStateMachine();
 		Role role = getRole();
 
-		TreeSearchWorker.globalInit(workers.length);
+		TreeSearchWorker.globalInit();
 
 		for (int i = 0; i < workers.length; i++)
 		{
@@ -140,7 +139,7 @@ public class MonteCarloTreeSearchGamer extends SampleGamer
 		for (int i = 0; i < workers.length; i++)
 		{
 			threads[i].setName("TreeSearchWorker-" + i);
-			threads[i].setPriority(Parameters.WORKER_THREAD_PRIORITY);
+			threads[i].setPriority(MachineParameters.WORKER_THREAD_PRIORITY);
 			threads[i].start();
 		}
 	}
@@ -223,6 +222,8 @@ public class MonteCarloTreeSearchGamer extends SampleGamer
 				score = move.getValue() / moveCount.get(m);
 			}
 
+			System.out.println("Considering move");
+			System.out.println(score + " : " + m);
 			if (score > maxScore)
 			{
 				maxScore = score;
@@ -230,8 +231,8 @@ public class MonteCarloTreeSearchGamer extends SampleGamer
 			}
 		}
 
-		System.out.println("Best score: " + maxScore);
-		System.out.println("Best move: " + bestMove);
+		System.out.println("Best move: ");
+		System.out.println(maxScore + " : " + bestMove);
 
 		return bestMove;
 	}
@@ -240,7 +241,7 @@ public class MonteCarloTreeSearchGamer extends SampleGamer
 	{
 		if (root == null)
 		{
-			root = new Node(null, currentState, null, utility.getRoleSize(), true);
+			root = new Node(null, currentState, null, true);
 		}
 		else
 		{
@@ -253,7 +254,8 @@ public class MonteCarloTreeSearchGamer extends SampleGamer
 			}
 			else
 			{
-				root = new Node(null, currentState, null, utility.getRoleSize(), true);
+				root = new Node(null, currentState, null, true);
+				System.out.println("Missed finding the tree - investigate");
 			}
 
 			childStates.clear();
@@ -272,7 +274,7 @@ public class MonteCarloTreeSearchGamer extends SampleGamer
 	{
 		if (timeout != 0)
 		{
-			endTime = timeout - Parameters.TIME_BUFFER;
+			endTime = timeout - RuntimeParameters.TIME_BUFFER;
 		}
 		else
 		{
