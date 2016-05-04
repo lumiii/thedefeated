@@ -5,10 +5,10 @@ public class Parameters
 	// amount of time to buffer before the timeout
 	public static final long TIME_BUFFER = 2000;
 	public static final int NUM_CORES = 2;
-	public static final int EXPLORATION_FACTOR = 50;
+	public static final int EXPLORATION_FACTOR = 40;
 	public static final int DEPTH_CHARGE_COUNT = 4;
 
-	public static final boolean MINIMAX = false;
+	public static final boolean MINIMAX = true;
 
 	// performance - use for competition
 	//private static final int THREAD_PRIORITY_BUMP = 2;

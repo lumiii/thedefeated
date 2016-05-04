@@ -56,7 +56,6 @@ public class MonteCarloTreeSearchGamer extends SampleGamer
 		childStates.clear();
 
 		TreeSearchWorker.printStats();
-		TreeSearchWorker.globalCleanup();
 	}
 
 	@Override
@@ -68,7 +67,7 @@ public class MonteCarloTreeSearchGamer extends SampleGamer
 		StateMachine stateMachine = getStateMachine();
 		Role role = getRole();
 
-		TreeSearchWorker.globalInit(workers.length);
+		TreeSearchWorker.globalInit();
 
 		for (int i = 0; i < workers.length; i++)
 		{
@@ -242,7 +241,7 @@ public class MonteCarloTreeSearchGamer extends SampleGamer
 	{
 		if (root == null)
 		{
-			root = new Node(null, currentState, null, utility.getRoleSize(), true);
+			root = new Node(null, currentState, null, true);
 		}
 		else
 		{
@@ -255,7 +254,8 @@ public class MonteCarloTreeSearchGamer extends SampleGamer
 			}
 			else
 			{
-				root = new Node(null, currentState, null, utility.getRoleSize(), true);
+				root = new Node(null, currentState, null, true);
+				System.out.println("Missed finding the tree - investigate");
 			}
 
 			childStates.clear();
