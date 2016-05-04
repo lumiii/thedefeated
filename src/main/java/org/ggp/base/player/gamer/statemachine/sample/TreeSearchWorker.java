@@ -111,7 +111,7 @@ public class TreeSearchWorker implements Runnable
 				int visits = 0;
 
 				int totalScore = 0;
-				for (int i = 0; i < Parameters.DEPTH_CHARGE_COUNT; i++)
+				for (int i = 0; i < RuntimeParameters.DEPTH_CHARGE_COUNT; i++)
 				{
 					try
 					{
@@ -251,7 +251,7 @@ public class TreeSearchWorker implements Runnable
 			}
 
 			return (node.utility / node.visit
-					+ Parameters.EXPLORATION_FACTOR * Math.sqrt(2 * Math.log(parentVisit) / node.visit));
+					+ RuntimeParameters.EXPLORATION_FACTOR * Math.sqrt(2 * Math.log(parentVisit) / node.visit));
 		}
 	}
 }

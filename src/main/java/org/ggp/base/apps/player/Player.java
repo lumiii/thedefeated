@@ -26,7 +26,7 @@ import org.ggp.base.apps.player.match.MatchPanel;
 import org.ggp.base.apps.player.network.NetworkPanel;
 import org.ggp.base.player.GamePlayer;
 import org.ggp.base.player.gamer.Gamer;
-import org.ggp.base.player.gamer.statemachine.sample.Parameters;
+import org.ggp.base.player.gamer.statemachine.sample.RuntimeParameters;
 import org.ggp.base.util.reflection.ProjectSearcher;
 import org.ggp.base.util.ui.NativeUI;
 
@@ -105,7 +105,7 @@ public final class Player extends JPanel
                 gamers.remove(gamer);
             }
         }
-        typeComboBox.setSelectedItem(Parameters.DEFAULT_PLAYER);
+        typeComboBox.setSelectedItem(RuntimeParameters.DEFAULT_PLAYER);
 
         JPanel managerPanel = new JPanel(new GridBagLayout());
         managerPanel.setBorder(new TitledBorder("Manager"));

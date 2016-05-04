@@ -18,15 +18,15 @@ public class MonteCarloTreeSearchGamer extends SampleGamer
 {
 	private long endTime = 0;
 
-	private Thread[] threads = new Thread[Parameters.NUM_CORES];
-	private TreeSearchWorker[] workers = new TreeSearchWorker[Parameters.NUM_CORES];
+	private Thread[] threads = new Thread[MachineParameters.NUM_CORES];
+	private TreeSearchWorker[] workers = new TreeSearchWorker[MachineParameters.NUM_CORES];
 	private Map<MachineState, Node> childStates = new HashMap<>();
 	private Node root = null;
 	private GameUtilities utility;
 
 	public MonteCarloTreeSearchGamer()
 	{
-		Thread.currentThread().setPriority(Parameters.MAIN_THREAD_PRIORITY);
+		Thread.currentThread().setPriority(MachineParameters.MAIN_THREAD_PRIORITY);
 		for (int i = 0; i < workers.length; i++)
 		{
 			workers[i] = new TreeSearchWorker(i);
@@ -139,7 +139,7 @@ public class MonteCarloTreeSearchGamer extends SampleGamer
 		for (int i = 0; i < workers.length; i++)
 		{
 			threads[i].setName("TreeSearchWorker-" + i);
-			threads[i].setPriority(Parameters.WORKER_THREAD_PRIORITY);
+			threads[i].setPriority(MachineParameters.WORKER_THREAD_PRIORITY);
 			threads[i].start();
 		}
 	}
@@ -274,7 +274,7 @@ public class MonteCarloTreeSearchGamer extends SampleGamer
 	{
 		if (timeout != 0)
 		{
-			endTime = timeout - Parameters.TIME_BUFFER;
+			endTime = timeout - RuntimeParameters.TIME_BUFFER;
 		}
 		else
 		{

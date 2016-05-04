@@ -29,6 +29,6 @@ public class Node
 		children = new ConcurrentLinkedQueue<Node>();
 		state = stat;
 		move = m;
-		maxNode = playerHasChoice || !Parameters.MINIMAX;
+		maxNode = playerHasChoice || !RuntimeParameters.MINIMAX;
 	}
 }
