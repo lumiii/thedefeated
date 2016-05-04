@@ -26,6 +26,7 @@ public class MonteCarloTreeSearchGamer extends SampleGamer
 
 	public MonteCarloTreeSearchGamer()
 	{
+		printParameters();
 		Thread.currentThread().setPriority(MachineParameters.MAIN_THREAD_PRIORITY);
 		for (int i = 0; i < workers.length; i++)
 		{
@@ -297,5 +298,15 @@ public class MonteCarloTreeSearchGamer extends SampleGamer
 		long nowTime = now.getTime();
 
 		return endTime - nowTime;
+	}
+
+	private void printParameters()
+	{
+		System.out.println("Running with the following: ");
+		System.out.println("# of threads: " + MachineParameters.NUM_CORES);
+		System.out.println("Exploration parameter: " + RuntimeParameters.EXPLORATION_FACTOR);
+		System.out.println("Depth charge count: " + RuntimeParameters.DEPTH_CHARGE_COUNT);
+		System.out.println("Time buffer: " + RuntimeParameters.TIME_BUFFER);
+		System.out.println("Minimax: " + RuntimeParameters.MINIMAX);
 	}
 }
