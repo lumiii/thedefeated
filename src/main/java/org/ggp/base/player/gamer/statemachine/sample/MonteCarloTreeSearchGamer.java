@@ -79,6 +79,7 @@ public class MonteCarloTreeSearchGamer extends SampleGamer
 		childStates.clear();
 
 		updateRoot(getCurrentState());
+		childStates.put(root.state, root);
 
 		updateWorkers(root);
 		startWorkers();

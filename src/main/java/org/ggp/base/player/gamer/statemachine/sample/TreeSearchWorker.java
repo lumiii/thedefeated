@@ -132,7 +132,7 @@ public class TreeSearchWorker implements Runnable
 				try
 				{
 					int score = stateMachine.getGoal(node.state, playerRole);
-					backPropagate(node, score, 1);
+					backPropagate(node, score * RuntimeParameters.DEPTH_CHARGE_COUNT, RuntimeParameters.DEPTH_CHARGE_COUNT);
 				}
 				catch (GoalDefinitionException e)
 				{
