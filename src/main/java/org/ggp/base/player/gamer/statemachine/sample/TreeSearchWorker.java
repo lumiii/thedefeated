@@ -141,9 +141,6 @@ public class TreeSearchWorker implements Runnable
 						Node parent = node.parent;
 						if (!parent.maxNode)
 						{
-							System.out.println("Marking dead min node");
-							System.out.println("State: " + parent.state);
-							System.out.println("Move: " + parent.move);
 							parent.utility = LOSE_SCORE;
 							parent.visit = MAX_VISITS;
 							parent.locked = true;
@@ -154,9 +151,6 @@ public class TreeSearchWorker implements Runnable
 						Node parent = node.parent;
 						if (parent.maxNode)
 						{
-							System.out.println("Marking winning max node");
-							System.out.println("State: " + parent.state);
-							System.out.println("Move: " + parent.move);
 							parent.utility = WIN_SCORE;
 							parent.visit = MIN_VISITS;
 							parent.locked = true;
