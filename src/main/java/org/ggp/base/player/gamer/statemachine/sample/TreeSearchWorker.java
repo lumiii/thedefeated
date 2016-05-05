@@ -2,6 +2,7 @@ package org.ggp.base.player.gamer.statemachine.sample;
 
 import java.util.List;
 
+import org.apache.logging.log4j.Logger;
 import org.ggp.base.util.statemachine.MachineState;
 import org.ggp.base.util.statemachine.Move;
 import org.ggp.base.util.statemachine.Role;
@@ -13,12 +14,18 @@ import org.ggp.base.util.statemachine.exceptions.TransitionDefinitionException;
 
 public class TreeSearchWorker implements Runnable
 {
+	private static final Logger log = GLog.getLogger(TreeSearchWorker.class);
+
 	private static final int WIN_SCORE = 100;
 	private static final int LOSE_SCORE = 0;
 	private static final int MAX_VISITS = Integer.MAX_VALUE / 2;
 	private static final int MIN_VISITS = 1;
+
+	private static final int FULL_TREE_WARNING_THRESHOLD = 10;
+
 	private volatile static int nodesVisited = 0;
 	private volatile static int nodesUpdated = 0;
+	private volatile static int terminalNodeVisited = 0;
 
 	private int id;
 
@@ -70,16 +77,17 @@ public class TreeSearchWorker implements Runnable
 		if (this.root != this.newRoot)
 		{
 			this.root = this.newRoot;
-			System.out.println("Thread " + Thread.currentThread().getName() + " active");
-			//TreeSearchWorker.printStats();
+			log.info(GLog.THREAD_ACTIVITY,
+					Thread.currentThread().getName() + " active");
 		}
 	}
 
 	@Override
 	public void run()
 	{
-		System.out.println("Starting worker" + id + " thread " + Thread.currentThread().getName());
 		Thread currentThread = Thread.currentThread();
+		log.info(GLog.THREAD_ACTIVITY,
+				"Starting " + currentThread.getName());
 
 		while (!currentThread.isInterrupted())
 		{
@@ -88,15 +96,18 @@ public class TreeSearchWorker implements Runnable
 				update();
 				treeSearch();
 			}
-
 			// catch all exceptions
 			catch (Exception e)
 			{
-				e.printStackTrace();
+				log.error(GLog.ERRORS,
+						"Exception encountered within thread "
+						+ currentThread.getName(), e);
 			}
 		}
 
 		cleanup();
+		log.info(GLog.THREAD_ACTIVITY,
+				"Stopping " + currentThread.getName());
 	}
 
 
@@ -125,7 +136,8 @@ public class TreeSearchWorker implements Runnable
 					}
 					catch (GoalDefinitionException | TransitionDefinitionException | MoveDefinitionException e)
 					{
-						e.printStackTrace();
+						log.error(GLog.ERRORS,
+								"Error encountered performing depth charge", e);
 					}
 				}
 
@@ -136,11 +148,17 @@ public class TreeSearchWorker implements Runnable
 				try
 				{
 					int score = stateMachine.getGoal(node.state, playerRole);
+
+					terminalNodeVisited++;
+
 					if (score <= LOSE_SCORE)
 					{
 						Node parent = node.parent;
 						if (!parent.maxNode)
 						{
+							log.debug(GLog.TREE_SEARCH,
+								"Found min terminal node");
+
 							parent.utility = LOSE_SCORE;
 							parent.visit = MAX_VISITS;
 							parent.locked = true;
@@ -151,6 +169,9 @@ public class TreeSearchWorker implements Runnable
 						Node parent = node.parent;
 						if (parent.maxNode)
 						{
+							log.debug(GLog.TREE_SEARCH,
+								"Found max terminal node");
+
 							parent.utility = WIN_SCORE;
 							parent.visit = MIN_VISITS;
 							parent.locked = true;
@@ -170,8 +191,10 @@ public class TreeSearchWorker implements Runnable
 
 	public static void printStats()
 	{
-		System.out.println("Nodes visited: " + nodesVisited);
-		System.out.println("Nodes updated: " + nodesUpdated);
+		log.info(GLog.NODE_STATS, "Nodes visited: " + nodesVisited);
+		log.info(GLog.NODE_STATS, "Terminal nodes updated: " + terminalNodeVisited);
+		log.info(GLog.NODE_STATS, "Nodes updated: " + nodesUpdated);
+
 	}
 
 	private Node select(Node node)
@@ -226,6 +249,12 @@ public class TreeSearchWorker implements Runnable
 			{
 				return select(result);
 			}
+		}
+
+		if (nodesVisited > FULL_TREE_WARNING_THRESHOLD)
+		{
+			log.warn(GLog.TREE_SEARCH,
+					"No nodes selected - can be a bad sign if late into the game");
 		}
 
 		return null;

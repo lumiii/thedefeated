@@ -8,6 +8,7 @@ import java.util.Map.Entry;
 import java.util.Timer;
 import java.util.TimerTask;
 
+import org.apache.logging.log4j.Logger;
 import org.ggp.base.util.statemachine.MachineState;
 import org.ggp.base.util.statemachine.Move;
 import org.ggp.base.util.statemachine.Role;
@@ -18,6 +19,7 @@ import org.ggp.base.util.statemachine.exceptions.TransitionDefinitionException;
 
 public class MonteCarloTreeSearchGamer extends SampleGamer
 {
+	private static final Logger log = GLog.getLogger(MonteCarloTreeSearchGamer.class);
 	private long endTime = 0;
 
 	private Thread[] threads = new Thread[MachineParameters.NUM_CORES];
@@ -28,6 +30,11 @@ public class MonteCarloTreeSearchGamer extends SampleGamer
 
 	private Timer timer = null;
 	private ThreadTimer threadTimer = null;
+
+	static
+	{
+		printParameters();
+	}
 
 	class ThreadTimer extends TimerTask
 	{
@@ -51,14 +58,14 @@ public class MonteCarloTreeSearchGamer extends SampleGamer
 			if (!this.disable)
 			{
 				wakeupThread.interrupt();
-				System.out.println("Waking up thread");
+				log.info(GLog.MAIN_THREAD_ACTIVITY,
+						"Waking up main thread from sleep");
 			}
 		}
 	}
 
 	public MonteCarloTreeSearchGamer()
 	{
-		printParameters();
 		Thread.currentThread().setPriority(MachineParameters.MAIN_THREAD_PRIORITY);
 		for (int i = 0; i < workers.length; i++)
 		{
@@ -72,15 +79,14 @@ public class MonteCarloTreeSearchGamer extends SampleGamer
 	@Override
 	public void stateMachineStop()
 	{
-		System.out.println("Stop called");
-		stopWorkers();
+		log.info(GLog.MAIN_THREAD_ACTIVITY, "Stop called");
 		endGame();
 	}
 
 	@Override
 	public void stateMachineAbort()
 	{
-		System.out.println("Abort called");
+		log.info(GLog.MAIN_THREAD_ACTIVITY, "Abort called");
 		endGame();
 	}
 
@@ -97,6 +103,8 @@ public class MonteCarloTreeSearchGamer extends SampleGamer
 	public void stateMachineMetaGame(long timeout)
 			throws TransitionDefinitionException, MoveDefinitionException, GoalDefinitionException
 	{
+		log.info(GLog.MAIN_THREAD_ACTIVITY,
+				GLog.BANNER + " Beginning meta game " + GLog.BANNER);
 		setTimeout(timeout + 1000);
 
 		StateMachine stateMachine = getStateMachine();
@@ -122,12 +130,17 @@ public class MonteCarloTreeSearchGamer extends SampleGamer
 		waitForTimeout();
 
 		setTimeout(0);
+		log.info(GLog.MAIN_THREAD_ACTIVITY,
+				GLog.BANNER + " Ending meta game " + GLog.BANNER);
 	}
 
 	@Override
 	public Move stateMachineSelectMove(long timeout)
 			throws TransitionDefinitionException, MoveDefinitionException, GoalDefinitionException
 	{
+		log.info(GLog.MAIN_THREAD_ACTIVITY,
+				GLog.BANNER + " Beginning move selection " + GLog.BANNER);
+
 		setTimeout(timeout);
 
 		StateMachine stateMachine = getStateMachine();
@@ -141,9 +154,9 @@ public class MonteCarloTreeSearchGamer extends SampleGamer
 			childStates.put(child.state, child);
 		}
 
-		System.out.println("Before waiting");
+		log.info(GLog.MAIN_THREAD_ACTIVITY, "Before waiting...");
 		waitForTimeout();
-		System.out.println("After waiting");
+		log.info(GLog.MAIN_THREAD_ACTIVITY, "After waiting");
 
 		Role role = getRole();
 
@@ -159,12 +172,14 @@ public class MonteCarloTreeSearchGamer extends SampleGamer
 		if (bestMove == null)
 		{
 			bestMove = utility.getRandomMove(currentState);
-			System.out.println("Playing random move: " + bestMove);
+			log.info(GLog.MOVE_EVALUATION, "Playing random move: " + bestMove);
 		}
 
 		setTimeout(0);
 
-		System.out.println("All done");
+
+		log.info(GLog.MAIN_THREAD_ACTIVITY,
+				GLog.BANNER + " Ending move selection " + GLog.BANNER);
 		TreeSearchWorker.printStats();
 
 		return bestMove;
@@ -202,10 +217,6 @@ public class MonteCarloTreeSearchGamer extends SampleGamer
 			}
 			catch (InterruptedException e)
 			{
-				if (Thread.interrupted())
-				{
-					System.out.println("Main thread correctly interrupted");
-				}
 			}
 
 			threadTimer = null;
@@ -220,7 +231,6 @@ public class MonteCarloTreeSearchGamer extends SampleGamer
 		{
 			moveScore.put(m, 0);
 			moveCount.put(m, 0);
-			// System.out.println(m.getContents());
 		}
 
 		int roleIndex = utility.getPlayerRoleIndex();
@@ -234,9 +244,11 @@ public class MonteCarloTreeSearchGamer extends SampleGamer
 			// see if we can find an immediate winning move
 			if (!opponentHasMoves && utility.isWinningState(child.state))
 			{
-				System.out.println("Performing winning move");
-				System.out.println(m);
-				System.out.println("Congratulations");
+				log.info(GLog.MOVE_EVALUATION,
+						"Performing winning move");
+				log.info(GLog.MOVE_EVALUATION, m);
+				log.info(GLog.MOVE_EVALUATION,
+						"Congratulations");
 				return m;
 			}
 
@@ -250,7 +262,6 @@ public class MonteCarloTreeSearchGamer extends SampleGamer
 				score = child.utility / child.visit;
 			}
 
-			// System.out.println(m.getContents());
 			moveScore.put(m, moveScore.get(m) + score);
 			moveCount.put(m, moveCount.get(m) + 1);
 		}
@@ -267,8 +278,11 @@ public class MonteCarloTreeSearchGamer extends SampleGamer
 				score = move.getValue() / moveCount.get(m);
 			}
 
-			System.out.println("Considering move");
-			System.out.println(score + " : " + m);
+			log.info(GLog.MOVE_EVALUATION,
+					"Considering move");
+			log.info(GLog.MOVE_EVALUATION,
+					score + " : " + m);
+
 			if (score > maxScore)
 			{
 				maxScore = score;
@@ -276,8 +290,10 @@ public class MonteCarloTreeSearchGamer extends SampleGamer
 			}
 		}
 
-		System.out.println("Best move: ");
-		System.out.println(maxScore + " : " + bestMove);
+		log.info(GLog.MOVE_EVALUATION,
+				"Best move: ");
+		log.info(GLog.MOVE_EVALUATION,
+				maxScore + " : " + bestMove);
 
 		return bestMove;
 	}
@@ -300,7 +316,7 @@ public class MonteCarloTreeSearchGamer extends SampleGamer
 			else
 			{
 				root = new Node(null, currentState, null, true);
-				System.out.println("Missed finding the tree - investigate");
+				log.error(GLog.ERRORS, "Missed finding the tree - investigate");
 			}
 
 			childStates.clear();
@@ -343,13 +359,19 @@ public class MonteCarloTreeSearchGamer extends SampleGamer
 		return endTime - nowTime;
 	}
 
-	private void printParameters()
+	private static void printParameters()
 	{
-		System.out.println("Running with the following: ");
-		System.out.println("# of threads: " + MachineParameters.NUM_CORES);
-		System.out.println("Exploration parameter: " + RuntimeParameters.EXPLORATION_FACTOR);
-		System.out.println("Depth charge count: " + RuntimeParameters.DEPTH_CHARGE_COUNT);
-		System.out.println("Time buffer: " + MachineParameters.TIME_BUFFER);
-		System.out.println("Minimax: " + RuntimeParameters.MINIMAX);
+		log.info(GLog.MAIN_THREAD_ACTIVITY,
+				"Running with the following parameters: ");
+		log.info(GLog.MAIN_THREAD_ACTIVITY,
+				"# of threads: " + MachineParameters.NUM_CORES);
+		log.info(GLog.MAIN_THREAD_ACTIVITY,
+				"Exploration parameter: " + RuntimeParameters.EXPLORATION_FACTOR);
+		log.info(GLog.MAIN_THREAD_ACTIVITY,
+				"Depth charge count: " + RuntimeParameters.DEPTH_CHARGE_COUNT);
+		log.info(GLog.MAIN_THREAD_ACTIVITY,
+				"Time buffer: " + MachineParameters.TIME_BUFFER);
+		log.info(GLog.MAIN_THREAD_ACTIVITY,
+				"Minimax: " + RuntimeParameters.MINIMAX);
 	}
 }
