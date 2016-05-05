@@ -15,6 +15,8 @@ public class Node
 	public final boolean maxNode;
 	public volatile boolean selected;
 
+	public boolean locked;
+
 	public Node parent;
 	public AbstractQueue<Node> children;
 	public final MachineState state;
@@ -30,5 +32,6 @@ public class Node
 		state = stat;
 		move = m;
 		maxNode = playerHasChoice || !RuntimeParameters.MINIMAX;
+		locked = false;
 	}
 }

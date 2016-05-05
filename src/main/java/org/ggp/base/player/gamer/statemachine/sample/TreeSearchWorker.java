@@ -13,6 +13,10 @@ import org.ggp.base.util.statemachine.exceptions.TransitionDefinitionException;
 
 public class TreeSearchWorker implements Runnable
 {
+	private static final int WIN_SCORE = 100;
+	private static final int LOSE_SCORE = 0;
+	private static final int MAX_VISITS = Integer.MAX_VALUE / 2;
+	private static final int MIN_VISITS = 1;
 	private volatile static int nodesVisited = 0;
 	private volatile static int nodesUpdated = 0;
 
@@ -67,7 +71,7 @@ public class TreeSearchWorker implements Runnable
 		{
 			this.root = this.newRoot;
 			System.out.println("Thread " + Thread.currentThread().getName() + " active");
-			TreeSearchWorker.printStats();
+			//TreeSearchWorker.printStats();
 		}
 	}
 
@@ -132,6 +136,33 @@ public class TreeSearchWorker implements Runnable
 				try
 				{
 					int score = stateMachine.getGoal(node.state, playerRole);
+					if (score <= LOSE_SCORE)
+					{
+						Node parent = node.parent;
+						if (!parent.maxNode)
+						{
+							System.out.println("Marking dead min node");
+							System.out.println("State: " + parent.state);
+							System.out.println("Move: " + parent.move);
+							parent.utility = LOSE_SCORE;
+							parent.visit = MAX_VISITS;
+							parent.locked = true;
+						}
+					}
+					else if (score >= WIN_SCORE)
+					{
+						Node parent = node.parent;
+						if (parent.maxNode)
+						{
+							System.out.println("Marking winning max node");
+							System.out.println("State: " + parent.state);
+							System.out.println("Move: " + parent.move);
+							parent.utility = WIN_SCORE;
+							parent.visit = MIN_VISITS;
+							parent.locked = true;
+						}
+					}
+
 					backPropagate(node, score * RuntimeParameters.DEPTH_CHARGE_COUNT, RuntimeParameters.DEPTH_CHARGE_COUNT);
 				}
 				catch (GoalDefinitionException e)
@@ -223,8 +254,12 @@ public class TreeSearchWorker implements Runnable
 	{
 		synchronized (node)
 		{
-			node.visit += visits;
-			node.utility += totalScore;
+			if (!node.locked)
+			{
+				node.visit += visits;
+				node.utility += totalScore;
+			}
+
 			nodesUpdated += visits;
 		}
 

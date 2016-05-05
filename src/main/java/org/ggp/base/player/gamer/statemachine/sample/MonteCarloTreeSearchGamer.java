@@ -31,21 +31,24 @@ public class MonteCarloTreeSearchGamer extends SampleGamer
 
 	class ThreadTimer extends TimerTask
 	{
-		Thread wakeupThread = null;
+		private boolean disable;
+		private Thread wakeupThread = null;
+
 		public ThreadTimer(Thread thread)
 		{
 			this.wakeupThread = thread;
+			this.disable = false;
 		}
 
-		public void setThread(Thread thread)
+		public void disable()
 		{
-			this.wakeupThread = thread;
+			this.disable = true;
 		}
 
 		@Override
 		public void run()
 		{
-			if (wakeupThread != null)
+			if (!this.disable)
 			{
 				wakeupThread.interrupt();
 				System.out.println("Waking up thread");
@@ -195,7 +198,7 @@ public class MonteCarloTreeSearchGamer extends SampleGamer
 				threadTimer = new ThreadTimer(Thread.currentThread());
 				timer.schedule(threadTimer, getRemainingTime());
 				Thread.sleep(getRemainingTime());
-				threadTimer.setThread(null);
+				threadTimer.disable();
 			}
 			catch (InterruptedException e)
 			{
@@ -316,7 +319,7 @@ public class MonteCarloTreeSearchGamer extends SampleGamer
 	{
 		if (timeout != 0)
 		{
-			endTime = timeout - RuntimeParameters.TIME_BUFFER;
+			endTime = timeout - MachineParameters.TIME_BUFFER;
 		}
 		else
 		{
@@ -346,7 +349,7 @@ public class MonteCarloTreeSearchGamer extends SampleGamer
 		System.out.println("# of threads: " + MachineParameters.NUM_CORES);
 		System.out.println("Exploration parameter: " + RuntimeParameters.EXPLORATION_FACTOR);
 		System.out.println("Depth charge count: " + RuntimeParameters.DEPTH_CHARGE_COUNT);
-		System.out.println("Time buffer: " + RuntimeParameters.TIME_BUFFER);
+		System.out.println("Time buffer: " + MachineParameters.TIME_BUFFER);
 		System.out.println("Minimax: " + RuntimeParameters.MINIMAX);
 	}
 }
