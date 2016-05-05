@@ -136,6 +136,11 @@ public class MonteCarloTreeSearchGamer extends SampleGamer
 		updateRoot(currentState);
 		updateWorkers(root);
 
+		for (Node child : root.children)
+		{
+			childStates.put(child.state, child);
+		}
+
 		System.out.println("Before waiting");
 		waitForTimeout();
 		System.out.println("After waiting");
@@ -155,11 +160,6 @@ public class MonteCarloTreeSearchGamer extends SampleGamer
 		{
 			bestMove = utility.getRandomMove(currentState);
 			System.out.println("Playing random move: " + bestMove);
-		}
-
-		for (Node child : root.children)
-		{
-			childStates.put(child.state, child);
 		}
 
 		setTimeout(0);
