@@ -53,7 +53,7 @@ public class GLog
 		initLogger();
 	}
 
-	public static void initLogger()
+	private static void initLogger()
 	{
 		StatusLogger.getLogger().setLevel(Level.OFF);
 
@@ -78,21 +78,46 @@ public class GLog
 		ConsoleAppender appender = ConsoleAppender.createDefaultAppenderForLayout(layout);
 		loggerConfig.addAppender(appender, loggerConfig.getLevel(), null);
 
-		// uncomment any of these to filter out that category of logs
-		// loggerConfig.addFilter(F_MAIN_THREAD_ACTIVITY);
-		// loggerConfig.addFilter(F_NODE_STATS);
-		// loggerConfig.addFilter(F_TREE_SEARCH);
-		// loggerConfig.addFilter(F_THREAD_ACTIVITY);
-		// loggerConfig.addFilter(F_MOVE_EVALUATION);
-		// loggerConfig.addFilter(F_ERRORS);
+		filterLogs(loggerConfig);
 
 		loggerContext.updateLoggers();
 	}
 
+	private static void filterLogs(LoggerConfig loggerConfig)
+	{
+		if (!RuntimeParameters.LOG_MAIN_THREAD)
+		{
+			loggerConfig.addFilter(F_MAIN_THREAD_ACTIVITY);
+		}
+
+		if (!RuntimeParameters.LOG_NODE_STATS)
+		{
+			loggerConfig.addFilter(F_NODE_STATS);
+		}
+
+		if (!RuntimeParameters.LOG_TREE_SEARCH)
+		{
+			loggerConfig.addFilter(F_TREE_SEARCH);
+		}
+
+		if (!RuntimeParameters.LOG_THREAD)
+		{
+			loggerConfig.addFilter(F_THREAD_ACTIVITY);
+		}
+
+		if (!RuntimeParameters.LOG_MOVE_EVALUATION)
+		{
+			loggerConfig.addFilter(F_MOVE_EVALUATION);
+		}
+
+		if (!RuntimeParameters.LOG_ERRORS)
+		{
+			loggerConfig.addFilter(F_ERRORS);
+		}
+	}
+
 	public static Logger getLogger(Class<?> c)
 	{
-		Logger log = loggerContext.getLogger(c.getSimpleName());
-
-		return log;
+		return loggerContext.getLogger(c.getSimpleName());
 	}
 }

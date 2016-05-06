@@ -78,7 +78,7 @@ public class TreeSearchWorker implements Runnable
 		{
 			this.root = this.newRoot;
 			log.info(GLog.THREAD_ACTIVITY,
-					Thread.currentThread().getName() + " active");
+					"Thread active");
 		}
 	}
 
@@ -87,7 +87,7 @@ public class TreeSearchWorker implements Runnable
 	{
 		Thread currentThread = Thread.currentThread();
 		log.info(GLog.THREAD_ACTIVITY,
-				"Starting " + currentThread.getName());
+				"Starting thread");
 
 		while (!currentThread.isInterrupted())
 		{
@@ -100,14 +100,13 @@ public class TreeSearchWorker implements Runnable
 			catch (Exception e)
 			{
 				log.error(GLog.ERRORS,
-						"Exception encountered within thread "
-						+ currentThread.getName(), e);
+						"Exception encountered within thread", e);
 			}
 		}
 
 		cleanup();
 		log.info(GLog.THREAD_ACTIVITY,
-				"Stopping " + currentThread.getName());
+				"Stopping thread");
 	}
 
 
@@ -192,69 +191,80 @@ public class TreeSearchWorker implements Runnable
 	public static void printStats()
 	{
 		log.info(GLog.NODE_STATS, "Nodes visited: " + nodesVisited);
-		log.info(GLog.NODE_STATS, "Terminal nodes updated: " + terminalNodeVisited);
+		log.info(GLog.NODE_STATS, "Terminal nodes visited: " + terminalNodeVisited);
 		log.info(GLog.NODE_STATS, "Nodes updated: " + nodesUpdated);
-
 	}
 
 	private Node select(Node node)
 	{
-		synchronized (node)
-		{
-			if (!node.selected)
-			{
-				node.selected = true;
-				return node;
-			}
-		}
+		Node currentNode = node;
+		int depth = 0;
 
-		for (Node child : node.children)
+		while (currentNode != null)
 		{
-			synchronized (child)
+			depth++;
+
+			synchronized (currentNode)
 			{
-				if (!child.selected)
+				if (!currentNode.selected)
 				{
-					child.selected = true;
-					return child;
+					currentNode.selected = true;
+
+					log.info(GLog.TREE_SEARCH,
+							"Searched depth " + depth);
+
+					return currentNode;
 				}
 			}
-		}
 
-		if (!node.children.isEmpty())
-		{
-			// if it's a max node, start with the minimum value and look up
-			// otherwise, start with the max value and look down
-			double score = node.maxNode ? 0 : Double.MAX_VALUE;
+			for (Node child : currentNode.children)
+			{
+				synchronized (child)
+				{
+					if (!child.selected)
+					{
+						child.selected = true;
+						log.info(GLog.TREE_SEARCH,
+								"Searched depth " + depth);
+
+						return child;
+					}
+				}
+			}
 
 			Node result = null;
-			for (Node child : node.children)
+			if (!currentNode.children.isEmpty())
 			{
-				double newScore = selectFn(child);
+				// if it's a max node, start with the minimum value and look up
+				// otherwise, start with the max value and look down
+				double score = currentNode.maxNode ? 0 : Double.MAX_VALUE;
 
-				// use the highest score if it's a max node
-				if (node.maxNode && newScore > score)
+				for (Node child : currentNode.children)
 				{
-					score = newScore;
-					result = child;
-				}
-				// use the lowest score if it's a min node
-				else if (!node.maxNode && newScore < score)
-				{
-					score = newScore;
-					result = child;
+					double newScore = selectFn(child);
+
+					// use the highest score if it's a max node
+					if (currentNode.maxNode && newScore > score)
+					{
+						score = newScore;
+						result = child;
+					}
+					// use the lowest score if it's a min node
+					else if (!currentNode.maxNode && newScore < score)
+					{
+						score = newScore;
+						result = child;
+					}
 				}
 			}
 
-			if (result != null)
-			{
-				return select(result);
-			}
+			currentNode = result;
 		}
 
 		if (nodesVisited > FULL_TREE_WARNING_THRESHOLD)
 		{
 			log.warn(GLog.TREE_SEARCH,
-					"No nodes selected - can be a bad sign if late into the game");
+					"No nodes selected after searching depth " + depth);
 		}
 
 		return null;
@@ -275,21 +285,27 @@ public class TreeSearchWorker implements Runnable
 
 	private void backPropagate(Node node, int totalScore, int visits)
 	{
-		synchronized (node)
+		Node currentNode = node;
+		int depth = 0;
+		while (currentNode != null)
 		{
-			if (!node.locked)
+			depth++;
+
+			synchronized (currentNode)
 			{
-				node.visit += visits;
-				node.utility += totalScore;
+				if (!currentNode.locked)
+				{
+					currentNode.visit += visits;
+					currentNode.utility += totalScore;
+				}
 			}
 
 			nodesUpdated += visits;
+			currentNode = currentNode.parent;
 		}
 
-		if (node.parent != null)
-		{
-			backPropagate(node.parent, totalScore, visits);
-		}
+		log.info(GLog.TREE_SEARCH,
+				"Backpropagated up depth " + depth);
 	}
 
 	private double selectFn(Node node)
