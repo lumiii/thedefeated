@@ -24,6 +24,8 @@ dependencies {
         'lib/javassist/javassist.jar',
         'lib/reflections/reflections-0.9.9-RC1.jar',
         'lib/Htmlparser/htmlparser-1.4.jar',
+        'lib/log4j/log4j-api-2.5.jar',
+        'lib/log4j/log4j-core-2.5.jar',
     )
     testCompile files(
         'lib/JUnit/junit-4.11.jar',
