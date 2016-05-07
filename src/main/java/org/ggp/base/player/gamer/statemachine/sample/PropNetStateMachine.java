@@ -1,16 +1,18 @@
 package org.ggp.base.player.gamer.statemachine.sample;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.HashSet;
-import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
+import java.util.Map.Entry;
 import java.util.Set;
 
 import org.ggp.base.util.gdl.grammar.Gdl;
 import org.ggp.base.util.gdl.grammar.GdlConstant;
 import org.ggp.base.util.gdl.grammar.GdlRelation;
 import org.ggp.base.util.gdl.grammar.GdlSentence;
+import org.ggp.base.util.gdl.grammar.GdlTerm;
 import org.ggp.base.util.propnet.architecture.Component;
 import org.ggp.base.util.propnet.architecture.PropNet;
 import org.ggp.base.util.propnet.architecture.components.Proposition;
@@ -30,7 +32,7 @@ public class PropNetStateMachine extends StateMachine {
     /** The underlying proposition network  */
     private PropNet propNet;
     /** The topological ordering of the propositions */
-    private List<Proposition> ordering;
+    //private List<Proposition> ordering;
     /** The player roles */
     private List<Role> roles;
 
@@ -44,13 +46,71 @@ public class PropNetStateMachine extends StateMachine {
         try {
             propNet = OptimizingPropNetFactory.create(description);
             roles = propNet.getRoles();
-            ordering = getOrdering();
+//            ordering = getOrdering();
         } catch (InterruptedException e) {
             throw new RuntimeException(e);
         }
     }
 
+    private boolean clearPropNet()
+    {
 
+    	Map<GdlSentence, Proposition> props = propNet.getBasePropositions();
+    	for(Entry<GdlSentence, Proposition> val : props.entrySet())
+    	{
+    		if(props.containsKey(val.getKey()))
+    		{
+    			props.get(val.getKey()).setValue(false);
+    		}
+    	}
+    	return true;
+    }
+
+    private boolean propMarkP(Proposition p) throws Exception
+    {
+    	if(propNet.getBasePropositions().containsKey(p.getName()))
+    	{
+    		return p.getValue();
+    	}
+    	else if(propNet.getInputPropositions().containsKey(p.getName()))
+    	{
+    		return p.getValue();
+    	}
+    	else
+    	{
+    		Component input = p.getSingleInput();
+    		return input.getValue();
+    	}
+
+		//throw new Exception("Undefined type");
+    }
+
+
+
+    private boolean markBases(Map<GdlSentence, Boolean> vals)
+    {
+
+    	Map<GdlSentence, Proposition> props = propNet.getBasePropositions();
+    	for(Map.Entry<GdlSentence, Boolean> val : vals.entrySet())
+    	{
+    		if(props.containsKey(val.getKey()))
+    		{
+    			props.get(val.getKey()).setValue(val.getValue());
+    		}
+    	}
+    	return true;
+    }
+
+    private void markMoves(List<Move> moves)
+    {
+    	Map<GdlSentence, Proposition> props = propNet.getInputPropositions();
+    	for (Move move : moves)
+    	{
+    		GdlSentence sentence = move.getContents().toSentence();
+    		Proposition prop = props.get(sentence);
+    		prop.setValue(true);
+    	}
+    }
 
     /**
      * Computes if the state is terminal. Should return the value
@@ -59,8 +119,8 @@ public class PropNetStateMachine extends StateMachine {
     @Override
     public boolean isTerminal(MachineState state) {
         // TODO: Compute whether the MachineState is terminal.
-    	state.getContents();
-        return false;
+    	Set<GdlSentence> contents = state.getContents();
+    	return contents.contains(propNet.getTerminalProposition());
     }
 
     /**
@@ -74,7 +134,40 @@ public class PropNetStateMachine extends StateMachine {
     public int getGoal(MachineState state, Role role)
             throws GoalDefinitionException {
         // TODO: Compute the goal for role in state.
-        return -1;
+        Set<Proposition> goals = propNet.getGoalPropositions().get(role);
+        for(Proposition goal : goals)
+        {
+        	if(state.getContents().contains(goal.getName()))
+        	{
+        		List<GdlTerm> body = goal.getName().getBody();
+        		return Integer.parseInt(body.get(body.size()-1).toString());
+        	}
+        }
+        throw new GoalDefinitionException(state, role);
+        /**
+        Set<GdlSentence> contents = state.getContents();
+        Set<GdlSentence> tempSet = new HashSet<GdlSentence>(contents);
+
+        Map<GdlSentence, Proposition> goalMap = goalMap(goals);
+
+        tempSet.retainAll(goalMap.keySet());
+
+        if (tempSet.size() == 1)
+        {
+        	return goalMap.get(tempSet.iterator().next()).getValue();
+        }
+        **/
+    }
+
+    private Map<GdlSentence, Proposition> goalMap(Set<Proposition> goalPropositions)
+    {
+    	HashMap<GdlSentence, Proposition> sentenceMap = new HashMap<GdlSentence, Proposition>();
+    	for (Proposition p : goalPropositions)
+    	{
+    		sentenceMap.put(p.getName(), p);
+    	}
+
+    	return sentenceMap;
     }
 
     /**
@@ -85,7 +178,8 @@ public class PropNetStateMachine extends StateMachine {
     @Override
     public MachineState getInitialState() {
         // TODO: Compute the initial state.
-        return null;
+    	propNet.getInitProposition().setValue(true);
+        return new MachineState(propNet.getBasePropositions().keySet());
     }
 
     /**
@@ -114,7 +208,10 @@ public class PropNetStateMachine extends StateMachine {
     @Override
     public MachineState getNextState(MachineState state, List<Move> moves)
             throws TransitionDefinitionException {
-        // TODO: Compute the next state.
+
+    	markMoves(moves);
+
+
         return null;
     }
 
@@ -132,21 +229,7 @@ public class PropNetStateMachine extends StateMachine {
      *
      * @return The order in which the truth values of propositions need to be set.
      */
-    public List<Proposition> getOrdering()
-    {
-        // List to contain the topological ordering.
-        List<Proposition> order = new LinkedList<Proposition>();
 
-        // All of the components in the PropNet
-        List<Component> components = new ArrayList<Component>(propNet.getComponents());
-
-        // All of the propositions in the PropNet.
-        List<Proposition> propositions = new ArrayList<Proposition>(propNet.getPropositions());
-
-        // TODO: Compute the topological ordering.
-
-        return order;
-    }
 
     /* Already implemented for you */
     @Override
