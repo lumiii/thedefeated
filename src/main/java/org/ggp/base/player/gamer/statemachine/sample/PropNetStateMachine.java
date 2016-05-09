@@ -110,6 +110,18 @@ public class PropNetStateMachine extends StateMachine
 		}
 	}
 
+	private void markMoves(List<Move> moves)
+	{
+		Set<GdlSentence> inputSentences = new HashSet<GdlSentence>();
+		for (Move move : moves)
+		{
+			GdlSentence sentence = move.getContents().toSentence();
+			inputSentences.add(sentence);
+		}
+
+		markInputProps(inputSentences);
+	}
+
 	private void markInputProps(Set<GdlSentence> moveSentences)
 	{
 		Map<GdlSentence, Proposition> props = propNet.getInputPropositions();
@@ -125,6 +137,36 @@ public class PropNetStateMachine extends StateMachine
 			prop.setValue(moveSentences.contains(entry.getKey()));
 		}
 	}
+
+    private void propagateMoves()
+    {
+    	List<Component> nodes = new ArrayList<Component>();
+    	for(Proposition p : propNet.getInputPropositions().values())
+    	{
+    		nodes.add(p);
+    	}
+    	for(Proposition p : propNet.getBasePropositions().values())
+    	{
+    		nodes.add(p);
+    	}
+    	while(nodes.size() != 0)
+    	{
+    		Component node = nodes.remove(0);
+    		if(node instanceof Proposition)
+    		{
+    			Proposition prop = (Proposition)node;
+    			if(prop.getValue() != prop.getPrevValue())
+    			{
+    				prop.setPrevValue(prop.getValue());
+    				nodes.addAll(prop.getOutputs());
+    			}
+    		}
+    		else
+    		{
+    			nodes.addAll(node.getOutputs());
+    		}
+    	}
+    }
 
 	/**
 	 * Computes if the state is terminal. Should return the value of the
@@ -207,12 +249,22 @@ public class PropNetStateMachine extends StateMachine
 	@Override
 	public List<Move> getLegalMoves(MachineState state, Role role) throws MoveDefinitionException
 	{
-		// TODO: Compute legal moves.
-		return null;
+    	markBaseProps(state.getContents());
+    	propagateMoves();
+    	Map<Role, Set<Proposition>> legals = propNet.getLegalPropositions();
+
+    	List<Move> m = new ArrayList<Move>();
+        for(Proposition p : legals.get(role))
+        {
+        	m.add(getMoveFromProposition(p));
+        }
+
+        return m;
 	}
 
 	private MachineState getNextState(Set<GdlSentence> baseSentences, Set<GdlSentence> inputSentences)
 	{
+		// TODO: unfinished
 		markBaseProps(baseSentences);
 		markInputProps(inputSentences);
 
@@ -235,7 +287,11 @@ public class PropNetStateMachine extends StateMachine
 	@Override
 	public MachineState getNextState(MachineState state, List<Move> moves) throws TransitionDefinitionException
 	{
-
+    	markBaseProps(state.getContents());
+    	markMoves(moves);
+    	propagateMoves();
+        return getStateFromBase();
+/*
 		Set<GdlSentence> baseSentences = state.getContents();
 		Set<GdlSentence> inputSentences = new HashSet<GdlSentence>();
 
@@ -246,6 +302,7 @@ public class PropNetStateMachine extends StateMachine
 		}
 
 		return getNextState(baseSentences, inputSentences);
+*/
 	}
 
 	/**
