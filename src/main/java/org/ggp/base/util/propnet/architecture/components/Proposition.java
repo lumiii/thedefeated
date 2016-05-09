@@ -14,6 +14,7 @@ public final class Proposition extends Component
     /** The value of the Proposition. */
     private boolean value;
 
+
     /**
      * Creates a new Proposition with name <tt>name</tt>.
      *
@@ -75,6 +76,7 @@ public final class Proposition extends Component
     @Override
     public String toString()
     {
-        return toDot("circle", value ? "red" : "white", name.toString());
+    	return name.toString();
+        //return toDot("circle", value ? "red" : "white", name.toString());
     }
 }

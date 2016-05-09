@@ -1,8 +1,11 @@
 package org.ggp.base.util.propnet.architecture;
 
 import java.io.Serializable;
+import java.util.Comparator;
 import java.util.HashSet;
 import java.util.Set;
+
+import org.ggp.base.player.gamer.statemachine.sample.GLog;
 
 /**
  * The root class of the Component hierarchy, which is designed to represent
@@ -12,12 +15,57 @@ import java.util.Set;
 
 public abstract class Component implements Serializable
 {
+	public enum Type
+	{
+		base,
+		input,
+		transition,
+		logic,
+		goal,
+		terminal,
+		other
+	}
+
+	public static class ComponentOrdering implements Comparator<Component>
+	{
+		@Override
+		public int compare(Component o1, Component o2)
+		{
+			// TODO: leave this in here for now to catch early bugs
+			// but will be pointless overhead once we know it's working
+			if (!o1.hasOrder() || !o2.hasOrder())
+			{
+				GLog.getRootLogger().error(GLog.PROPNET,
+					"Ordering invariant failed!");
+			}
+
+			int n1 = o1.getOrder();
+			int n2 = o2.getOrder();
+
+			if (n1 > n2)
+			{
+				return 1;
+			}
+			else if (n2 > n1)
+			{
+				return -1;
+			}
+
+			return 0;
+		}
+	}
+
+	public static final Comparator<Component> comparator = new ComponentOrdering();
 
     private static final long serialVersionUID = 352524175700224447L;
     /** The inputs to the component. */
     private final Set<Component> inputs;
     /** The outputs of the component. */
     private final Set<Component> outputs;
+
+    private int order;
+
+    private Type type;
 
     /**
      * Creates a new Component with no inputs or outputs.
@@ -26,6 +74,7 @@ public abstract class Component implements Serializable
     {
         this.inputs = new HashSet<Component>();
         this.outputs = new HashSet<Component>();
+        this.order = -1;
     }
 
     /**
@@ -57,6 +106,26 @@ public abstract class Component implements Serializable
     public void removeAllOutputs()
     {
         outputs.clear();
+    }
+
+    public void setOrder(int order)
+    {
+    	if (order < 0)
+    	{
+    		throw new IllegalArgumentException();
+    	}
+
+    	this.order = order;
+    }
+
+    public int getOrder()
+    {
+    	return order;
+    }
+
+    public boolean hasOrder()
+    {
+    	return (order != -1);
     }
 
     /**
@@ -153,4 +222,13 @@ public abstract class Component implements Serializable
         return sb.toString();
     }
 
+    public void setType(Type type)
+    {
+    	this.type = type;
+    }
+
+    public Type getType()
+    {
+    	return type;
+    }
 }

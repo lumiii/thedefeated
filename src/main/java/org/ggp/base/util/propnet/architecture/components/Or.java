@@ -34,4 +34,10 @@ public final class Or extends Component
     {
         return toDot("ellipse", "grey", "OR");
     }
+
+    @Override
+    public Type getType()
+    {
+    	return Type.logic;
+    }
 }

@@ -25,6 +25,7 @@ public class GLog
 	public static final String S_THREAD_ACTIVITY = "ThreadActivity";
 	public static final String S_MOVE_EVALUATION = "MoveEvaluation";
 	public static final String S_ERRORS = "Error";
+	public static final String S_PROPNET = "PropNet";
 
 	public static final Marker MAIN_THREAD_ACTIVITY = MarkerManager.getMarker(S_MAIN_THREAD_ACTIVITY);
 	public static final Marker NODE_STATS = MarkerManager.getMarker(S_NODE_STATS);
@@ -32,6 +33,7 @@ public class GLog
 	public static final Marker THREAD_ACTIVITY = MarkerManager.getMarker(S_THREAD_ACTIVITY);
 	public static final Marker MOVE_EVALUATION = MarkerManager.getMarker(S_MOVE_EVALUATION);
 	public static final Marker ERRORS = MarkerManager.getMarker(S_ERRORS);
+	public static final Marker PROPNET = MarkerManager.getMarker(S_PROPNET);
 
 	public static final String BANNER = "==========";
 
@@ -46,6 +48,8 @@ public class GLog
 	private static final MarkerFilter F_MOVE_EVALUATION = MarkerFilter.createFilter(S_MOVE_EVALUATION,
 			Filter.Result.DENY, Filter.Result.NEUTRAL);
 	private static final MarkerFilter F_ERRORS = MarkerFilter.createFilter(S_ERRORS, Filter.Result.DENY,
+			Filter.Result.NEUTRAL);
+	private static final MarkerFilter F_PROPNET = MarkerFilter.createFilter(S_PROPNET, Filter.Result.DENY,
 			Filter.Result.NEUTRAL);
 
 	static
@@ -114,10 +118,22 @@ public class GLog
 		{
 			loggerConfig.addFilter(F_ERRORS);
 		}
+
+		if (!RuntimeParameters.LOG_PROPNET)
+		{
+			loggerConfig.addFilter(F_PROPNET);
+		}
 	}
 
 	public static Logger getLogger(Class<?> c)
 	{
 		return loggerContext.getLogger(c.getSimpleName());
+	}
+
+	// use this for one-off situations where you don't want to create
+	// a whole logger for a class
+	public static Logger getRootLogger()
+	{
+		return loggerContext.getRootLogger();
 	}
 }

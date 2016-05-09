@@ -16,6 +16,7 @@ import org.ggp.base.util.gdl.grammar.GdlRelation;
 import org.ggp.base.util.gdl.grammar.GdlSentence;
 import org.ggp.base.util.gdl.grammar.GdlTerm;
 import org.ggp.base.util.logging.GamerLogger;
+import org.ggp.base.util.propnet.architecture.Component.Type;
 import org.ggp.base.util.propnet.architecture.components.And;
 import org.ggp.base.util.propnet.architecture.components.Not;
 import org.ggp.base.util.propnet.architecture.components.Or;
@@ -301,6 +302,7 @@ public final class PropNet
 
             Component component = proposition.getSingleInput();
             if (component instanceof Transition) {
+            	proposition.setType(Type.base);
                 basePropositions.put(proposition.getName(), proposition);
             }
         }
@@ -335,6 +337,7 @@ public final class PropNet
             if (!goalPropositions.containsKey(theRole)) {
                 goalPropositions.put(theRole, new HashSet<Proposition>());
             }
+            proposition.setType(Type.goal);
             goalPropositions.get(theRole).add(proposition);
         }
 
@@ -378,6 +381,7 @@ public final class PropNet
 
             GdlRelation relation = (GdlRelation) proposition.getName();
             if (relation.getName().getValue().equals("does")) {
+            	proposition.setType(Type.input);
                 inputPropositions.put(proposition.getName(), proposition);
             }
         }

@@ -27,4 +27,10 @@ public final class Not extends Component
     {
         return toDot("invtriangle", "grey", "NOT");
     }
+
+    @Override
+    public Type getType()
+    {
+    	return Type.logic;
+    }
 }

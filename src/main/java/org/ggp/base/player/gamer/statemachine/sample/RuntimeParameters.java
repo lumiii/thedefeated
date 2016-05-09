@@ -2,7 +2,7 @@ package org.ggp.base.player.gamer.statemachine.sample;
 
 public class RuntimeParameters
 {
-	public static final int EXPLORATION_FACTOR = 30;
+	public static final int EXPLORATION_FACTOR = 80;
 	public static final int DEPTH_CHARGE_COUNT = 4;
 
 	public static final boolean MINIMAX = true;
@@ -15,4 +15,5 @@ public class RuntimeParameters
 	public static final boolean LOG_TREE_SEARCH = false;
 	public static final boolean LOG_MOVE_EVALUATION = true;
 	public static final boolean LOG_ERRORS = true;
+	public static final boolean LOG_PROPNET = true;
 }
