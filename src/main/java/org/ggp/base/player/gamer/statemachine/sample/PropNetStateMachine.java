@@ -12,7 +12,6 @@ import org.ggp.base.util.gdl.grammar.Gdl;
 import org.ggp.base.util.gdl.grammar.GdlConstant;
 import org.ggp.base.util.gdl.grammar.GdlRelation;
 import org.ggp.base.util.gdl.grammar.GdlSentence;
-import org.ggp.base.util.gdl.grammar.GdlTerm;
 import org.ggp.base.util.propnet.architecture.Component;
 import org.ggp.base.util.propnet.architecture.PropNet;
 import org.ggp.base.util.propnet.architecture.components.Proposition;
@@ -101,6 +100,25 @@ public class PropNetStateMachine extends StateMachine {
     	return true;
     }
 
+
+    private boolean markBases(Set<GdlSentence> vals)
+    {
+
+    	Map<GdlSentence, Proposition> props = propNet.getBasePropositions();
+    	for(Entry<GdlSentence, Proposition> prop : props.entrySet())
+    	{
+    		if(vals.contains(prop.getKey()))
+    		{
+    			prop.getValue().setValue(true);
+    		}
+    		else
+    		{
+    			prop.getValue().setValue(false);
+    		}
+    	}
+    	return true;
+    }
+
     private void markMoves(List<Move> moves)
     {
     	Map<GdlSentence, Proposition> props = propNet.getInputPropositions();
@@ -112,6 +130,36 @@ public class PropNetStateMachine extends StateMachine {
     	}
     }
 
+
+    private void propagateMoves()
+    {
+    	List<Component> nodes = new ArrayList<Component>();
+    	for(Proposition p : propNet.getInputPropositions().values())
+    	{
+    		nodes.add(p);
+    	}
+    	for(Proposition p : propNet.getBasePropositions().values())
+    	{
+    		nodes.add(p);
+    	}
+    	while(nodes.size() != 0)
+    	{
+    		Component node = nodes.remove(0);
+    		if(node instanceof Proposition)
+    		{
+    			Proposition prop = (Proposition)node;
+    			if(prop.getValue() != prop.getPrevValue())
+    			{
+    				prop.setPrevValue(prop.getValue());
+    				nodes.addAll(prop.getOutputs());
+    			}
+    		}
+    		else
+    		{
+    			nodes.addAll(node.getOutputs());
+    		}
+    	}
+    }
     /**
      * Computes if the state is terminal. Should return the value
      * of the terminal proposition for the state.
@@ -139,8 +187,7 @@ public class PropNetStateMachine extends StateMachine {
         {
         	if(state.getContents().contains(goal.getName()))
         	{
-        		List<GdlTerm> body = goal.getName().getBody();
-        		return Integer.parseInt(body.get(body.size()-1).toString());
+        		return getGoalValue(goal);
         	}
         }
         throw new GoalDefinitionException(state, role);
@@ -199,7 +246,15 @@ public class PropNetStateMachine extends StateMachine {
     public List<Move> getLegalMoves(MachineState state, Role role)
             throws MoveDefinitionException {
         // TODO: Compute legal moves.
-        return null;
+    	markBases(state.getContents());
+    	propagateMoves();
+    	Map<Role, Set<Proposition>> legals = propNet.getLegalPropositions();
+        List<Move> m = new ArrayList<Move>();
+        for(Proposition p : legals.get(role))
+        {
+        	m.add(getMoveFromProposition(p));
+        }
+        return m;
     }
 
     /**
@@ -209,10 +264,10 @@ public class PropNetStateMachine extends StateMachine {
     public MachineState getNextState(MachineState state, List<Move> moves)
             throws TransitionDefinitionException {
 
+    	markBases(state.getContents());
     	markMoves(moves);
-
-
-        return null;
+    	propagateMoves();
+        return getStateFromBase();
     }
 
     /**

@@ -13,6 +13,7 @@ public final class Proposition extends Component
     private GdlSentence name;
     /** The value of the Proposition. */
     private boolean value;
+    private boolean prevValue;
 
     /**
      * Creates a new Proposition with name <tt>name</tt>.
@@ -56,6 +57,22 @@ public final class Proposition extends Component
     public boolean getValue()
     {
         return value;
+    }
+
+    /**
+     * Setter method.
+     *
+     * @param value
+     *            The new value of the Proposition.
+     */
+    public void setPrevValue(boolean value)
+    {
+        this.prevValue = value;
+    }
+
+    public boolean getPrevValue()
+    {
+        return prevValue;
     }
 
     /**
