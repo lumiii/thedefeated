@@ -53,6 +53,7 @@ public class PropNetStateMachine extends StateMachine
 	{
 		try
 		{
+			System.out.println("Initializing prop net");
 			propNet = OptimizingPropNetFactory.create(description);
 			roles = propNet.getRoles();
 			changedBaseProps = new LinkedHashSet<Proposition>();
@@ -230,7 +231,8 @@ public class PropNetStateMachine extends StateMachine
 
 		Set<GdlSentence> emptySet = Collections.emptySet();
 
-		return getNextState(initSet, emptySet);
+		MachineState nextState = getNextState(initSet, emptySet);
+		return nextState;
 	}
 
 	/**
@@ -278,7 +280,7 @@ public class PropNetStateMachine extends StateMachine
 		}
 
 
-		return null;
+		return getStateFromBase();
 	}
 
 	/**
