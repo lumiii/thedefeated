@@ -138,6 +138,7 @@ public class PropNetStateMachine extends StateMachine
     {
     	Queue<Component> queue = new LinkedList<Component>();
 
+    	queue.add(propNet.getInitProposition());
     	queue.addAll(propNet.getBasePropositions().values());
     	queue.addAll(propNet.getInputPropositions().values());
 

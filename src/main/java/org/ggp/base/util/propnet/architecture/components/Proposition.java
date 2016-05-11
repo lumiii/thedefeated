@@ -66,7 +66,7 @@ public final class Proposition extends Component
     @Override
 	public boolean isChanged()
     {
-        return (prevValue == value);
+        return (prevValue != value);
     }
 
     /**
