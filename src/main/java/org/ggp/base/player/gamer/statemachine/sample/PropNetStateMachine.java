@@ -67,17 +67,6 @@ public class PropNetStateMachine extends StateMachine
 		}
 	}
 
-	private void clearPropNet()
-	{
-		// TODO: this isn't actually what we want, because base/input
-		// propositions should be preserved for performance
-		Map<GdlSentence, Proposition> props = propNet.getBasePropositions();
-		for (Entry<GdlSentence, Proposition> val : props.entrySet())
-		{
-			val.getValue().setValue(false);
-		}
-	}
-
 	private boolean getMarking(Proposition p) throws Exception
 	{
 		// TODO: determine behaviour for all types
@@ -217,7 +206,8 @@ public class PropNetStateMachine extends StateMachine
 	public boolean isTerminal(MachineState state)
 	{
 		Set<GdlSentence> contents = state.getContents();
-		return contents.contains(propNet.getTerminalProposition());
+		Proposition terminalProposition = propNet.getTerminalProposition();
+		return contents.contains(terminalProposition.getName());
 	}
 
 	/**
@@ -270,8 +260,6 @@ public class PropNetStateMachine extends StateMachine
 
 		Set<GdlSentence> emptySet = Collections.emptySet();
 		MachineState nextState = getNextState(emptySet, emptySet);
-
-		init.setValue(false);
 
 		return nextState;
 	}
