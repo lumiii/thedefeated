@@ -8,7 +8,6 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
-import java.util.PriorityQueue;
 import java.util.Queue;
 import java.util.Set;
 
@@ -107,7 +106,8 @@ public class PropNetStateMachine extends StateMachine
 			Proposition prop = entry.getValue();
 			// sets the value to true if it's part of the machine state, false
 			// otherwise
-			prop.setValue(stateSentences.contains(entry.getKey()));
+			boolean value = stateSentences.contains(entry.getKey());
+			prop.setValue(value);
 		}
 	}
 
@@ -226,12 +226,13 @@ public class PropNetStateMachine extends StateMachine
 	{
 		Proposition init = propNet.getInitProposition();
 
-		Set<GdlSentence> initSet = new HashSet<GdlSentence>();
-		initSet.add(init.getName());
+		init.setValue(true);
 
 		Set<GdlSentence> emptySet = Collections.emptySet();
+		MachineState nextState = getNextState(emptySet, emptySet);
 
-		MachineState nextState = getNextState(initSet, emptySet);
+		init.setValue(false);
+
 		return nextState;
 	}
 
@@ -266,6 +267,11 @@ public class PropNetStateMachine extends StateMachine
 
 	private MachineState getNextState(Set<GdlSentence> baseSentences, Set<GdlSentence> inputSentences)
 	{
+		markBaseProps(baseSentences);
+    	markInputProps(inputSentences);
+    	propagateMoves();
+        return getStateFromBase();
+		/*
 		// TODO: unfinished
 		markBaseProps(baseSentences);
 		markInputProps(inputSentences);
@@ -281,6 +287,7 @@ public class PropNetStateMachine extends StateMachine
 
 
 		return getStateFromBase();
+		*/
 	}
 
 	/**
@@ -289,11 +296,6 @@ public class PropNetStateMachine extends StateMachine
 	@Override
 	public MachineState getNextState(MachineState state, List<Move> moves) throws TransitionDefinitionException
 	{
-    	markBaseProps(state.getContents());
-    	markMoves(moves);
-    	propagateMoves();
-        return getStateFromBase();
-/*
 		Set<GdlSentence> baseSentences = state.getContents();
 		Set<GdlSentence> inputSentences = new HashSet<GdlSentence>();
 
@@ -304,7 +306,6 @@ public class PropNetStateMachine extends StateMachine
 		}
 
 		return getNextState(baseSentences, inputSentences);
-*/
 	}
 
 	/**
