@@ -3,13 +3,13 @@ package org.ggp.base.player.gamer.statemachine.sample;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashSet;
+import java.util.LinkedHashSet;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Queue;
 import java.util.Set;
-import java.util.concurrent.ConcurrentHashMap;
 
 import org.apache.logging.log4j.Logger;
 import org.ggp.base.util.gdl.grammar.Gdl;
@@ -57,13 +57,24 @@ public class PropNetStateMachine extends StateMachine
 
 			propNet = OptimizingPropNetFactory.create(description);
 			roles = propNet.getRoles();
-			trueBaseProps = Collections.newSetFromMap(new ConcurrentHashMap<Proposition, Boolean>());
-			trueInputProps = Collections.newSetFromMap(new ConcurrentHashMap<Proposition, Boolean>());
+			trueBaseProps = new LinkedHashSet<Proposition>();
+			trueInputProps = new LinkedHashSet<Proposition>();
 			//setOrdering();
 		}
 		catch (InterruptedException e)
 		{
 			throw new RuntimeException(e);
+		}
+	}
+
+	private void clearPropNet()
+	{
+		// TODO: this isn't actually what we want, because base/input
+		// propositions should be preserved for performance
+		Map<GdlSentence, Proposition> props = propNet.getBasePropositions();
+		for (Entry<GdlSentence, Proposition> val : props.entrySet())
+		{
+			val.getValue().setValue(false);
 		}
 	}
 
@@ -207,8 +218,7 @@ public class PropNetStateMachine extends StateMachine
 	public boolean isTerminal(MachineState state)
 	{
 		Set<GdlSentence> contents = state.getContents();
-		Proposition terminalProposition = propNet.getTerminalProposition();
-		return contents.contains(terminalProposition.getName());
+		return contents.contains(propNet.getTerminalProposition());
 	}
 
 	/**
