@@ -136,38 +136,43 @@ public class PropNetStateMachine extends StateMachine
 
     private void propagateMoves()
     {
-    	Queue<Component> nodes = new LinkedList<Component>();
+    	Queue<Component> queue = new LinkedList<Component>();
 
-    	nodes.addAll(propNet.getBasePropositions().values());
-    	nodes.addAll(propNet.getInputPropositions().values());
+    	queue.addAll(propNet.getBasePropositions().values());
+    	queue.addAll(propNet.getInputPropositions().values());
 
-    	while(!nodes.isEmpty())
+    	while(!queue.isEmpty())
     	{
-    		Component node = nodes.poll();
-    		if(node instanceof Proposition)
+    		Component node = queue.poll();
+
+    		boolean updateChildren;
+
+    		if (node instanceof Proposition)
     		{
     			Proposition prop = (Proposition)node;
-    			if (prop.isChanged())
-    			{
-    				boolean value = prop.getValue();
-
-    				for (Component child : prop.getOutputs())
-    				{
-    					if (child instanceof Proposition)
-    					{
-    						Proposition childProp = (Proposition)child;
-    						childProp.setValue(value);
-
-    						addPropToTrueSet(childProp, value);
-    					}
-
-    					nodes.add(child);
-    				}
-    			}
+    			updateChildren = prop.isChanged();
     		}
     		else
     		{
-    			nodes.addAll(node.getOutputs());
+    			updateChildren = true;
+    		}
+
+    		if (updateChildren)
+    		{
+    			boolean value = node.getValue();
+
+    			for (Component child : node.getOutputs())
+    			{
+    				if (child instanceof Proposition)
+    				{
+    					Proposition childProp = (Proposition)child;
+    					childProp.setValue(value);
+
+    					addPropToTrueSet(childProp, value);
+    				}
+
+    				queue.add(child);
+    			}
     		}
     	}
     }

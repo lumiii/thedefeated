@@ -103,11 +103,12 @@ public final class Proposition extends Component
     @Override
 	public Type getType()
     {
-    	if (type != Type.base && type != Type.input)
+    	if (type == Type.base || type == Type.input)
     	{
-    		return Type.view;
+    		return type;
     	}
 
-		return type;
+    	// all propositions that are not base or input are view
+    	return Type.view;
     }
 }
