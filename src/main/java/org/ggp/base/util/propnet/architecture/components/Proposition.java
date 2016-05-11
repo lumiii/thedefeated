@@ -70,7 +70,8 @@ public final class Proposition extends Component
     @Override
 	public boolean isChanged()
     {
-        return (!init || prevValue != value || !propagated);
+    	return true;
+        //return (!init || prevValue != value || !propagated);
     }
 
     /**
@@ -103,6 +104,11 @@ public final class Proposition extends Component
     public void setPropagated()
     {
     	this.propagated = true;
+    }
+
+    public void unsetPropagated()
+    {
+    	this.propagated = false;
     }
 
     /**
