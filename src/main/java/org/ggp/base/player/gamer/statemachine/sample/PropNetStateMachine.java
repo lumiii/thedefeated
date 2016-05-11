@@ -171,7 +171,12 @@ public class PropNetStateMachine extends StateMachine
     					addPropToTrueSet(childProp, value);
     				}
 
-    				queue.add(child);
+    				// don't feed the base in again
+    				// this could cause an infinite loop
+    				if (child.getType() != Type.base)
+    				{
+    					queue.add(child);
+    				}
     			}
     		}
     	}
