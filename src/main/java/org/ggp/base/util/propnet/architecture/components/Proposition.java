@@ -12,6 +12,7 @@ public final class Proposition extends Component
     /** The name of the Proposition. */
     private GdlSentence name;
     /** The value of the Proposition. */
+    private boolean init;
     private boolean value;
     private boolean prevValue;
 
@@ -25,7 +26,9 @@ public final class Proposition extends Component
     public Proposition(GdlSentence name)
     {
         this.name = name;
+        this.init = false;
         this.value = false;
+        this.prevValue = false;
     }
 
     /**
@@ -60,20 +63,10 @@ public final class Proposition extends Component
         return value;
     }
 
-    /**
-     * Setter method.
-     *
-     * @param value
-     *            The new value of the Proposition.
-     */
-    public void setPrevValue(boolean value)
+    @Override
+	public boolean isChanged()
     {
-        this.prevValue = value;
-    }
-
-    public boolean getPrevValue()
-    {
-        return prevValue;
+        return (prevValue == value);
     }
 
     /**
@@ -84,7 +77,17 @@ public final class Proposition extends Component
      */
     public void setValue(boolean value)
     {
-        this.value = value;
+    	if (this.init)
+    	{
+    		this.prevValue = this.value;
+        	this.value = value;
+    	}
+    	else
+    	{
+        	this.value = value;
+    		this.init = true;
+    		this.prevValue = !this.value;
+    	}
     }
 
     /**
@@ -95,5 +98,16 @@ public final class Proposition extends Component
     {
     	return name.toString();
         //return toDot("circle", value ? "red" : "white", name.toString());
+    }
+
+    @Override
+	public Type getType()
+    {
+    	if (type != Type.base && type != Type.input)
+    	{
+    		return Type.view;
+    	}
+
+		return type;
     }
 }

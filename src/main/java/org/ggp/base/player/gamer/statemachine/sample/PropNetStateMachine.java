@@ -39,8 +39,8 @@ public class PropNetStateMachine extends StateMachine
 	/** The player roles */
 	private List<Role> roles;
 
-	private Set<Proposition> changedBaseProps;
-	private Set<Proposition> changedInputProps;
+	private Set<Proposition> trueBaseProps;
+	private Set<Proposition> trueInputProps;
 
 	/**
 	 * Initializes the PropNetStateMachine. You should compute the topological
@@ -52,12 +52,14 @@ public class PropNetStateMachine extends StateMachine
 	{
 		try
 		{
-			System.out.println("Initializing prop net");
+			log.info(GLog.PROPNET,
+				"Initializing prop net");
+
 			propNet = OptimizingPropNetFactory.create(description);
 			roles = propNet.getRoles();
-			changedBaseProps = new LinkedHashSet<Proposition>();
-			changedInputProps = new LinkedHashSet<Proposition>();
-			setOrdering();
+			trueBaseProps = new LinkedHashSet<Proposition>();
+			trueInputProps = new LinkedHashSet<Proposition>();
+			//setOrdering();
 		}
 		catch (InterruptedException e)
 		{
@@ -83,32 +85,18 @@ public class PropNetStateMachine extends StateMachine
 		{
 			return p.getValue();
 		}
-		else
-			if (p.getType() == Type.other)
-			{
-				Component input = p.getSingleInput();
-				return input.getValue();
-			}
+		else if (p.getType() == Type.view)
+		{
+			Component input = p.getSingleInput();
+			return input.getValue();
+		}
 
 		throw new Exception("Unexpected type");
 	}
 
 	private void markBaseProps(Set<GdlSentence> stateSentences)
 	{
-		Map<GdlSentence, Proposition> props = propNet.getBasePropositions();
-
-		// TODO: can optimize by having a separate set of base/input
-		// propositions
-		// that are true from before, then just iterate and adjust over those
-		// + set true for the rest that weren't in the set
-		for (Map.Entry<GdlSentence, Proposition> entry : props.entrySet())
-		{
-			Proposition prop = entry.getValue();
-			// sets the value to true if it's part of the machine state, false
-			// otherwise
-			boolean value = stateSentences.contains(entry.getKey());
-			prop.setValue(value);
-		}
+		markProps(propNet.getBasePropositions(), stateSentences);
 	}
 
 	private void markMoves(List<Move> moves)
@@ -123,10 +111,13 @@ public class PropNetStateMachine extends StateMachine
 		markInputProps(inputSentences);
 	}
 
-	private void markInputProps(Set<GdlSentence> moveSentences)
+	private void markInputProps(Set<GdlSentence> inputSentence)
 	{
-		Map<GdlSentence, Proposition> props = propNet.getInputPropositions();
+		markProps(propNet.getInputPropositions(), inputSentence);
+	}
 
+	private void markProps(Map<GdlSentence, Proposition> props, Set<GdlSentence> markSentences)
+	{
 		// TODO: can optimize by having a separate set of base/input
 		// propositions
 		// that are true from before, then just iterate and adjust over those
@@ -135,30 +126,36 @@ public class PropNetStateMachine extends StateMachine
 		{
 			Proposition prop = entry.getValue();
 			// sets the value to true if it's part of the moves, false otherwise
-			prop.setValue(moveSentences.contains(entry.getKey()));
+			boolean value = markSentences.contains(entry.getKey());
+
+			prop.setValue(value);
+
+			addPropToTrueSet(prop, value);
 		}
 	}
 
     private void propagateMoves()
     {
-    	List<Component> nodes = new ArrayList<Component>();
-    	for(Proposition p : propNet.getInputPropositions().values())
+    	Queue<Component> nodes = new LinkedList<Component>();
+
+    	nodes.addAll(propNet.getBasePropositions().values());
+    	nodes.addAll(propNet.getInputPropositions().values());
+
+    	while(!nodes.isEmpty())
     	{
-    		nodes.add(p);
-    	}
-    	for(Proposition p : propNet.getBasePropositions().values())
-    	{
-    		nodes.add(p);
-    	}
-    	while(nodes.size() != 0)
-    	{
-    		Component node = nodes.remove(0);
+    		Component node = nodes.poll();
     		if(node instanceof Proposition)
     		{
     			Proposition prop = (Proposition)node;
-    			if(prop.getValue() != prop.getPrevValue())
+    			Component input = prop.getSingleInput();
+
+    			if(input.isChanged())
     			{
-    				prop.setPrevValue(prop.getValue());
+    				boolean value = input.getValue();
+    				prop.setValue(value);
+
+    				addPropToTrueSet(prop, value);
+
     				nodes.addAll(prop.getOutputs());
     			}
     		}
@@ -167,6 +164,32 @@ public class PropNetStateMachine extends StateMachine
     			nodes.addAll(node.getOutputs());
     		}
     	}
+    }
+
+    private void addPropToTrueSet(Proposition prop, boolean value)
+    {
+		if (prop.getType() == Type.base)
+		{
+			if (value)
+			{
+				trueBaseProps.add(prop);
+			}
+			else
+			{
+				trueBaseProps.remove(prop);
+			}
+		}
+		else if (prop.getType() == Type.input)
+		{
+			if (value)
+			{
+				trueInputProps.add(prop);
+			}
+			else
+			{
+				trueInputProps.remove(prop);
+			}
+		}
     }
 
 	/**
@@ -269,25 +292,10 @@ public class PropNetStateMachine extends StateMachine
 	{
 		markBaseProps(baseSentences);
     	markInputProps(inputSentences);
+
     	propagateMoves();
-        return getStateFromBase();
-		/*
-		// TODO: unfinished
-		markBaseProps(baseSentences);
-		markInputProps(inputSentences);
 
-		Queue<Component> priorityQueue = new PriorityQueue<Component>(Component.comparator);
-
-		Map<GdlSentence, Proposition> baseProps = propNet.getBasePropositions();
-		for (Entry<GdlSentence, Proposition> baseProp : baseProps.entrySet())
-		{
-
-			priorityQueue.add(baseProp.getValue());
-		}
-
-
-		return getStateFromBase();
-		*/
+        return getStateFromCachedBase();
 	}
 
 	/**
@@ -424,7 +432,7 @@ public class PropNetStateMachine extends StateMachine
 	 *
 	 * @return PropNetMachineState
 	 */
-	public MachineState getStateFromBase()
+	private MachineState getStateFromBase()
 	{
 		Set<GdlSentence> contents = new HashSet<GdlSentence>();
 		for (Proposition p : propNet.getBasePropositions().values())
@@ -436,6 +444,17 @@ public class PropNetStateMachine extends StateMachine
 			}
 
 		}
+		return new MachineState(contents);
+	}
+
+	private MachineState getStateFromCachedBase()
+	{
+		Set<GdlSentence> contents = new HashSet<GdlSentence>();
+		for (Proposition p : trueBaseProps)
+		{
+			contents.add(p.getName());
+		}
+
 		return new MachineState(contents);
 	}
 }

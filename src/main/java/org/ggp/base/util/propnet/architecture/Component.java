@@ -19,11 +19,11 @@ public abstract class Component implements Serializable
 	{
 		base,
 		input,
+		view,
 		transition,
 		logic,
 		goal,
-		terminal,
-		other
+		terminal
 	}
 
 	public static class ComponentOrdering implements Comparator<Component>
@@ -65,7 +65,7 @@ public abstract class Component implements Serializable
 
     private int order;
 
-    private Type type;
+    protected Type type;
 
     /**
      * Creates a new Component with no inputs or outputs.
@@ -126,6 +126,13 @@ public abstract class Component implements Serializable
     public boolean hasOrder()
     {
     	return (order != -1);
+    }
+
+    // default always just say changed and let recompute happen
+    // for correctness. each subclass should put in their own behaviour
+    public boolean isChanged()
+    {
+        return true;
     }
 
     /**
