@@ -3,13 +3,13 @@ package org.ggp.base.player.gamer.statemachine.sample;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashSet;
-import java.util.LinkedHashSet;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Queue;
 import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
 
 import org.apache.logging.log4j.Logger;
 import org.ggp.base.util.gdl.grammar.Gdl;
@@ -20,6 +20,7 @@ import org.ggp.base.util.propnet.architecture.Component;
 import org.ggp.base.util.propnet.architecture.Component.Type;
 import org.ggp.base.util.propnet.architecture.PropNet;
 import org.ggp.base.util.propnet.architecture.components.Proposition;
+import org.ggp.base.util.propnet.architecture.components.Transition;
 import org.ggp.base.util.propnet.factory.OptimizingPropNetFactory;
 import org.ggp.base.util.statemachine.MachineState;
 import org.ggp.base.util.statemachine.Move;
@@ -57,9 +58,10 @@ public class PropNetStateMachine extends StateMachine
 
 			propNet = OptimizingPropNetFactory.create(description);
 			roles = propNet.getRoles();
-			trueBaseProps = new LinkedHashSet<Proposition>();
-			trueInputProps = new LinkedHashSet<Proposition>();
-			//setOrdering();
+			roles = propNet.getRoles();
+			trueBaseProps = Collections.newSetFromMap(new ConcurrentHashMap<Proposition, Boolean>());
+			trueInputProps = Collections.newSetFromMap(new ConcurrentHashMap<Proposition, Boolean>());
+			setOrdering();
 		}
 		catch (InterruptedException e)
 		{
@@ -67,14 +69,15 @@ public class PropNetStateMachine extends StateMachine
 		}
 	}
 
-	private void clearPropNet()
+	private void reset()
 	{
-		// TODO: this isn't actually what we want, because base/input
-		// propositions should be preserved for performance
-		Map<GdlSentence, Proposition> props = propNet.getBasePropositions();
-		for (Entry<GdlSentence, Proposition> val : props.entrySet())
+		for (Component c : propNet.getComponents())
 		{
-			val.getValue().setValue(false);
+			if (c instanceof Proposition)
+			{
+				Proposition prop = (Proposition)c;
+				prop.unsetPropagated();
+			}
 		}
 	}
 
@@ -128,14 +131,13 @@ public class PropNetStateMachine extends StateMachine
 			// sets the value to true if it's part of the moves, false otherwise
 			boolean value = markSentences.contains(entry.getKey());
 
-			prop.setValue(value);
-
-			addPropToTrueSet(prop, value);
+			markProposition(prop, value);
 		}
 	}
 
     private void propagateMoves()
     {
+    	//Queue<Component> queue = new PriorityQueue<Component>(Component.comparator);
     	Queue<Component> queue = new LinkedList<Component>();
 
     	queue.addAll(propNet.getBasePropositions().values());
@@ -153,6 +155,7 @@ public class PropNetStateMachine extends StateMachine
     			Proposition prop = (Proposition)node;
     			updateChildren = prop.isChanged();
     			prop.setPropagated();
+    			updateChildren = true;
     		}
     		else
     		{
@@ -168,9 +171,8 @@ public class PropNetStateMachine extends StateMachine
     				if (child instanceof Proposition)
     				{
     					Proposition childProp = (Proposition)child;
-    					childProp.setValue(value);
 
-    					addPropToTrueSet(childProp, value);
+    					markProposition(childProp, value);
     				}
 
     				// don't feed the base in again
@@ -184,8 +186,10 @@ public class PropNetStateMachine extends StateMachine
     	}
     }
 
-    private void addPropToTrueSet(Proposition prop, boolean value)
+    private void markProposition(Proposition prop, boolean value)
     {
+    	prop.setValue(value);
+
 		if (prop.getType() == Type.base)
 		{
 			if (value)
@@ -217,8 +221,14 @@ public class PropNetStateMachine extends StateMachine
 	@Override
 	public boolean isTerminal(MachineState state)
 	{
-		Set<GdlSentence> contents = state.getContents();
-		return contents.contains(propNet.getTerminalProposition());
+		clearPropNet();
+		Set<GdlSentence> inputSentences = Collections.emptySet();
+
+		getNextState(state.getContents(), inputSentences);
+
+		boolean terminal = propNet.getTerminalProposition().getValue();
+
+		return terminal;
 	}
 
 	/**
@@ -230,6 +240,11 @@ public class PropNetStateMachine extends StateMachine
 	@Override
 	public int getGoal(MachineState state, Role role) throws GoalDefinitionException
 	{
+		clearPropNet();
+		Set<GdlSentence> inputSentences = Collections.emptySet();
+
+		getNextState(state.getContents(), inputSentences);
+
 		Set<Proposition> goals = propNet.getGoalPropositions().get(role);
 
 		int goalValue = 0;
@@ -237,7 +252,7 @@ public class PropNetStateMachine extends StateMachine
 
 		for (Proposition goal : goals)
 		{
-			if (state.getContents().contains(goal.getName()))
+			if (goal.getValue())
 			{
 				if (hasSingleGoal)
 				{
@@ -267,6 +282,7 @@ public class PropNetStateMachine extends StateMachine
 	{
 		synchronized(this)
 		{
+			clearPropNet();
 			Proposition init = propNet.getInitProposition();
 
 			init.setValue(true);
@@ -298,6 +314,7 @@ public class PropNetStateMachine extends StateMachine
 	{
 		synchronized(this)
 		{
+			clearPropNet();
 	    	markBaseProps(state.getContents());
 
 	    	Set<GdlSentence> inputProps = Collections.emptySet();
@@ -320,6 +337,70 @@ public class PropNetStateMachine extends StateMachine
 		}
 	}
 
+	private void testConnectivity(Transition transition)
+	{
+		Set<Component> set = new HashSet<>();
+    	Queue<Component> queue = new LinkedList<Component>();
+
+    	queue.addAll(propNet.getBasePropositions().values());
+    	set.addAll(propNet.getBasePropositions().values());
+    	queue.addAll(propNet.getInputPropositions().values());
+    	set.addAll(propNet.getInputPropositions().values());
+    	queue.add(propNet.getInitProposition());
+    	set.add(propNet.getInitProposition());
+
+    	System.out.println("Looking for transition ");
+    	System.out.println(transition);
+
+    	while (true)
+    	{
+    		Component node = queue.poll();
+    		System.out.println("Looking for " + transition);
+    		System.out.println(node);
+
+    		if (queue.isEmpty())
+    		{
+    			System.out.println("UHOH");
+    			while(true)
+    			{
+
+    			}
+    		}
+
+    		if (node.equals(transition))
+    		{
+    			System.out.println("FOUND TRANSITION");
+    			break;
+    		}
+    		else
+    		{
+    			for (Component c: node.getOutputs())
+    			{
+    				if (!set.contains(c))
+    				{
+    					queue.add(c);
+    					set.add(c);
+    				}
+    			}
+    		}
+    	}
+	}
+
+	private void clearPropNet()
+	{
+		for (Component component : propNet.getComponents())
+		{
+			if (component instanceof Proposition)
+			{
+				Proposition prop = (Proposition)component;
+				prop.setValue(false);
+			}
+		}
+
+		trueBaseProps.clear();
+		trueInputProps.clear();
+	}
+
 	private MachineState getNextState(Set<GdlSentence> baseSentences, Set<GdlSentence> inputSentences)
 	{
 		synchronized(this)
@@ -329,7 +410,7 @@ public class PropNetStateMachine extends StateMachine
 
 	    	propagateMoves();
 
-	        return getStateFromCachedBase();
+	        return getStateFromBase();
 		}
 	}
 
@@ -339,6 +420,7 @@ public class PropNetStateMachine extends StateMachine
 	@Override
 	public MachineState getNextState(MachineState state, List<Move> moves) throws TransitionDefinitionException
 	{
+		clearPropNet();
 		Set<GdlSentence> baseSentences = state.getContents();
 		Set<GdlSentence> inputSentences = toDoes(moves);
 
