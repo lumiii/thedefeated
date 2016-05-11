@@ -147,16 +147,22 @@ public class PropNetStateMachine extends StateMachine
     		if(node instanceof Proposition)
     		{
     			Proposition prop = (Proposition)node;
-    			Component input = prop.getSingleInput();
-
-    			if(input.isChanged())
+    			if (prop.isChanged())
     			{
-    				boolean value = input.getValue();
-    				prop.setValue(value);
+    				boolean value = prop.getValue();
 
-    				addPropToTrueSet(prop, value);
+    				for (Component child : prop.getOutputs())
+    				{
+    					if (child instanceof Proposition)
+    					{
+    						Proposition childProp = (Proposition)child;
+    						childProp.setValue(value);
 
-    				nodes.addAll(prop.getOutputs());
+    						addPropToTrueSet(childProp, value);
+    					}
+
+    					nodes.add(child);
+    				}
     			}
     		}
     		else
