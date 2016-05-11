@@ -6,6 +6,7 @@ import java.util.HashSet;
 import java.util.Set;
 
 import org.ggp.base.player.gamer.statemachine.sample.GLog;
+import org.ggp.base.util.propnet.architecture.components.Proposition;
 
 /**
  * The root class of the Component hierarchy, which is designed to represent
@@ -23,7 +24,8 @@ public abstract class Component implements Serializable
 		transition,
 		logic,
 		goal,
-		terminal
+		terminal,
+		constant
 	}
 
 	public static class ComponentOrdering implements Comparator<Component>
@@ -216,17 +218,61 @@ public abstract class Component implements Serializable
      *            The value to use as the <tt>label</tt> attribute.
      * @return A representation of the Component in .dot format.
      */
+//    protected String toDot(String shape, String fillcolor, String label)
+//    {
+//        StringBuilder sb = new StringBuilder();
+//
+//        sb.append("\"@" + Integer.toHexString(hashCode()) + "\"[shape=" + shape + ", style= filled, fillcolor=" + fillcolor + ", label=\"" + label + "\"]; ");
+//        for ( Component component : getOutputs() )
+//        {
+//            sb.append("\"@" + Integer.toHexString(hashCode()) + "\"->" + "\"@" + Integer.toHexString(component.hashCode()) + "\"; ");
+//        }
+//
+//        return sb.toString();
+//    }
+
     protected String toDot(String shape, String fillcolor, String label)
+    {
+    	return labelString() + "\n";
+    }
+
+    public String toList()
     {
         StringBuilder sb = new StringBuilder();
 
-        sb.append("\"@" + Integer.toHexString(hashCode()) + "\"[shape=" + shape + ", style= filled, fillcolor=" + fillcolor + ", label=\"" + label + "\"]; ");
+        String thisLabel = labelString();
+
+        sb.append(thisLabel + "\n");
+
         for ( Component component : getOutputs() )
         {
-            sb.append("\"@" + Integer.toHexString(hashCode()) + "\"->" + "\"@" + Integer.toHexString(component.hashCode()) + "\"; ");
+        	sb.append(thisLabel + "->" + component.labelString() + "\n");
         }
 
         return sb.toString();
+    }
+
+    protected String labelString()
+    {
+        String thisLabel = "@" + Integer.toHexString(hashCode()) + ":";
+
+        if (this instanceof Proposition)
+        {
+        	thisLabel += ((Proposition)this).getName() + "(" + getType().toString() + ")";
+        }
+        else
+        {
+        	if (getType() == Type.logic)
+        	{
+        		thisLabel += this.getClass().getSimpleName();
+        	}
+        	else
+        	{
+        		thisLabel += getType().toString();
+        	}
+        }
+
+        return thisLabel;
     }
 
     public void setType(Type type)

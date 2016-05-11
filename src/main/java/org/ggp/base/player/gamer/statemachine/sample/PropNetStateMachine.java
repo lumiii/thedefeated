@@ -127,9 +127,9 @@ public class PropNetStateMachine extends StateMachine
     {
     	Queue<Component> queue = new LinkedList<Component>();
 
-    	queue.add(propNet.getInitProposition());
     	queue.addAll(propNet.getBasePropositions().values());
     	queue.addAll(propNet.getInputPropositions().values());
+    	queue.add(propNet.getInitProposition());
 
     	while(!queue.isEmpty())
     	{
@@ -141,6 +141,7 @@ public class PropNetStateMachine extends StateMachine
     		{
     			Proposition prop = (Proposition)node;
     			updateChildren = prop.isChanged();
+    			prop.setPropagated();
     		}
     		else
     		{
@@ -254,14 +255,19 @@ public class PropNetStateMachine extends StateMachine
 	@Override
 	public MachineState getInitialState()
 	{
-		Proposition init = propNet.getInitProposition();
+		synchronized(this)
+		{
+			Proposition init = propNet.getInitProposition();
 
-		init.setValue(true);
+			init.setValue(true);
 
-		Set<GdlSentence> emptySet = Collections.emptySet();
-		MachineState nextState = getNextState(emptySet, emptySet);
+			Set<GdlSentence> emptySet = Collections.emptySet();
+			MachineState nextState = getNextState(emptySet, emptySet);
 
-		return nextState;
+			init.setValue(false);
+
+			return nextState;
+		}
 	}
 
 	/**
@@ -280,27 +286,41 @@ public class PropNetStateMachine extends StateMachine
 	@Override
 	public List<Move> getLegalMoves(MachineState state, Role role) throws MoveDefinitionException
 	{
-    	markBaseProps(state.getContents());
-    	propagateMoves();
-    	Map<Role, Set<Proposition>> legals = propNet.getLegalPropositions();
+		synchronized(this)
+		{
+	    	markBaseProps(state.getContents());
 
-    	List<Move> m = new ArrayList<Move>();
-        for(Proposition p : legals.get(role))
-        {
-        	m.add(getMoveFromProposition(p));
-        }
+	    	Set<GdlSentence> inputProps = Collections.emptySet();
+	    	markInputProps(inputProps);
 
-        return m;
+	    	propagateMoves();
+
+	    	Map<Role, Set<Proposition>> legals = propNet.getLegalPropositions();
+
+	    	List<Move> m = new ArrayList<Move>();
+	        for(Proposition p : legals.get(role))
+	        {
+	        	if (p.getValue())
+	        	{
+	        		m.add(getMoveFromProposition(p));
+	        	}
+	        }
+
+	        return m;
+		}
 	}
 
 	private MachineState getNextState(Set<GdlSentence> baseSentences, Set<GdlSentence> inputSentences)
 	{
-		markBaseProps(baseSentences);
-    	markInputProps(inputSentences);
+		synchronized(this)
+		{
+			markBaseProps(baseSentences);
+	    	markInputProps(inputSentences);
 
-    	propagateMoves();
+	    	propagateMoves();
 
-        return getStateFromCachedBase();
+	        return getStateFromCachedBase();
+		}
 	}
 
 	/**
@@ -310,13 +330,7 @@ public class PropNetStateMachine extends StateMachine
 	public MachineState getNextState(MachineState state, List<Move> moves) throws TransitionDefinitionException
 	{
 		Set<GdlSentence> baseSentences = state.getContents();
-		Set<GdlSentence> inputSentences = new HashSet<GdlSentence>();
-
-		for (Move move : moves)
-		{
-			GdlSentence sentence = move.getContents().toSentence();
-			inputSentences.add(sentence);
-		}
+		Set<GdlSentence> inputSentences = toDoes(moves);
 
 		return getNextState(baseSentences, inputSentences);
 	}
@@ -392,9 +406,9 @@ public class PropNetStateMachine extends StateMachine
 	 * @param moves
 	 * @return
 	 */
-	private List<GdlSentence> toDoes(List<Move> moves)
+	private Set<GdlSentence> toDoes(List<Move> moves)
 	{
-		List<GdlSentence> doeses = new ArrayList<GdlSentence>(moves.size());
+		Set<GdlSentence> doeses = new HashSet<GdlSentence>(moves.size());
 		Map<Role, Integer> roleIndices = getRoleIndices();
 
 		for (int i = 0; i < roles.size(); i++)
@@ -455,9 +469,13 @@ public class PropNetStateMachine extends StateMachine
 	private MachineState getStateFromCachedBase()
 	{
 		Set<GdlSentence> contents = new HashSet<GdlSentence>();
-		for (Proposition p : trueBaseProps)
+
+		synchronized(this)
 		{
-			contents.add(p.getName());
+			for (Proposition p : trueBaseProps)
+			{
+				contents.add(p.getName());
+			}
 		}
 
 		return new MachineState(contents);

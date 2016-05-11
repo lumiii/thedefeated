@@ -13,6 +13,9 @@ public final class Proposition extends Component
     private GdlSentence name;
     /** The value of the Proposition. */
     private boolean init;
+    // this needs to be better written in a more concise way
+    // but I need to sleep
+    private boolean propagated;
     private boolean value;
     private boolean prevValue;
 
@@ -29,6 +32,7 @@ public final class Proposition extends Component
         this.init = false;
         this.value = false;
         this.prevValue = false;
+        this.propagated = false;
     }
 
     /**
@@ -66,7 +70,7 @@ public final class Proposition extends Component
     @Override
 	public boolean isChanged()
     {
-        return (prevValue != value);
+        return (!init || prevValue != value || !propagated);
     }
 
     /**
@@ -81,6 +85,11 @@ public final class Proposition extends Component
     	{
     		this.prevValue = this.value;
         	this.value = value;
+
+        	if (this.prevValue != this.value)
+    		{
+        		this.propagated = false;
+    		}
     	}
     	else
     	{
@@ -90,14 +99,20 @@ public final class Proposition extends Component
     	}
     }
 
+    // hacky, remove soon
+    public void setPropagated()
+    {
+    	this.propagated = true;
+    }
+
     /**
      * @see org.ggp.base.util.propnet.architecture.Component#toString()
      */
     @Override
     public String toString()
     {
-    	return name.toString();
-        //return toDot("circle", value ? "red" : "white", name.toString());
+    	//return name.toString();
+        return toDot("circle", value ? "red" : "white", name.toString());
     }
 
     @Override
