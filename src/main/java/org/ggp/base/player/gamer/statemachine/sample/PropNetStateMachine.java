@@ -61,7 +61,7 @@ public class PropNetStateMachine extends StateMachine
 			roles = propNet.getRoles();
 			trueBaseProps = Collections.newSetFromMap(new ConcurrentHashMap<Proposition, Boolean>());
 			trueInputProps = Collections.newSetFromMap(new ConcurrentHashMap<Proposition, Boolean>());
-			setOrdering();
+			//setOrdering();
 		}
 		catch (InterruptedException e)
 		{
@@ -79,22 +79,6 @@ public class PropNetStateMachine extends StateMachine
 				prop.unsetPropagated();
 			}
 		}
-	}
-
-	private boolean getMarking(Proposition p) throws Exception
-	{
-		// TODO: determine behaviour for all types
-		if (p.getType() == Type.base || p.getType() == Type.input || p.getType() == Type.logic)
-		{
-			return p.getValue();
-		}
-		else if (p.getType() == Type.view)
-		{
-			Component input = p.getSingleInput();
-			return input.getValue();
-		}
-
-		throw new Exception("Unexpected type");
 	}
 
 	private void markBaseProps(Set<GdlSentence> stateSentences)
@@ -221,14 +205,14 @@ public class PropNetStateMachine extends StateMachine
 	@Override
 	public boolean isTerminal(MachineState state)
 	{
-		clearPropNet();
-		Set<GdlSentence> inputSentences = Collections.emptySet();
+		synchronized(this)
+		{
+			propagateMoves(state.getContents());
 
-		getNextState(state.getContents(), inputSentences);
+			boolean terminal = propNet.getTerminalProposition().getValue();
 
-		boolean terminal = propNet.getTerminalProposition().getValue();
-
-		return terminal;
+			return terminal;
+		}
 	}
 
 	/**
@@ -240,36 +224,40 @@ public class PropNetStateMachine extends StateMachine
 	@Override
 	public int getGoal(MachineState state, Role role) throws GoalDefinitionException
 	{
-		clearPropNet();
-		Set<GdlSentence> inputSentences = Collections.emptySet();
-
-		getNextState(state.getContents(), inputSentences);
-
-		Set<Proposition> goals = propNet.getGoalPropositions().get(role);
-
-		int goalValue = 0;
-		boolean hasSingleGoal = false;
-
-		for (Proposition goal : goals)
+		synchronized(this)
 		{
-			if (goal.getValue())
+			propagateMoves(state.getContents());
+
+			Set<Proposition> goals = propNet.getGoalPropositions().get(role);
+
+			int goalValue = 0;
+			boolean hasSingleGoal = false;
+
+			for (Proposition goal : goals)
 			{
-				if (hasSingleGoal)
+				if (goal.getValue())
 				{
-					throw new GoalDefinitionException(state, role);
+					if (hasSingleGoal)
+					{
+						log.error(GLog.ERRORS,
+								"Found multiple goals");
+						throw new GoalDefinitionException(state, role);
+					}
+
+					goalValue = getGoalValue(goal);
+					hasSingleGoal = true;
 				}
-
-				goalValue = getGoalValue(goal);
-				hasSingleGoal = true;
 			}
-		}
 
-		if (!hasSingleGoal)
-		{
-			throw new GoalDefinitionException(state, role);
-		}
+			if (!hasSingleGoal)
+			{
+				log.error(GLog.ERRORS,
+						"Found no goals");
+				throw new GoalDefinitionException(state, role);
+			}
 
-		return goalValue;
+			return goalValue;
+		}
 	}
 
 	/**
@@ -282,15 +270,10 @@ public class PropNetStateMachine extends StateMachine
 	{
 		synchronized(this)
 		{
-			clearPropNet();
-			Proposition init = propNet.getInitProposition();
-
-			init.setValue(true);
+			List<Proposition> list = Collections.singletonList(propNet.getInitProposition());
 
 			Set<GdlSentence> emptySet = Collections.emptySet();
-			MachineState nextState = getNextState(emptySet, emptySet);
-
-			init.setValue(false);
+			MachineState nextState = getNextState(emptySet, emptySet, list);
 
 			return nextState;
 		}
@@ -314,13 +297,7 @@ public class PropNetStateMachine extends StateMachine
 	{
 		synchronized(this)
 		{
-			clearPropNet();
-	    	markBaseProps(state.getContents());
-
-	    	Set<GdlSentence> inputProps = Collections.emptySet();
-	    	markInputProps(inputProps);
-
-	    	propagateMoves();
+			propagateMoves(state.getContents());
 
 	    	Map<Role, Set<Proposition>> legals = propNet.getLegalPropositions();
 
@@ -401,18 +378,62 @@ public class PropNetStateMachine extends StateMachine
 		trueInputProps.clear();
 	}
 
-	private MachineState getNextState(Set<GdlSentence> baseSentences, Set<GdlSentence> inputSentences)
+	private void propagateMoves(Set<GdlSentence> baseSentences)
 	{
-		synchronized(this)
-		{
-			markBaseProps(baseSentences);
-	    	markInputProps(inputSentences);
-
-	    	propagateMoves();
-
-	        return getStateFromBase();
-		}
+		propagateMoves(baseSentences, null, null);
 	}
+
+	private void propagateMoves(
+			Set<GdlSentence> baseSentences,
+			Set<GdlSentence> inputSentences)
+	{
+		propagateMoves(baseSentences, inputSentences, null);
+	}
+
+	private void propagateMoves(
+			Set<GdlSentence> baseSentences,
+			Set<GdlSentence> inputSentences,
+			List<Proposition> additionalProps)
+	{
+		clearPropNet();
+
+		markBaseProps(baseSentences);
+
+		if (inputSentences == null)
+		{
+			inputSentences = Collections.emptySet();
+		}
+
+    	markInputProps(inputSentences);
+
+    	if (additionalProps != null)
+    	{
+	    	for (Proposition p : additionalProps)
+	    	{
+	    		p.setValue(true);
+	    	}
+    	}
+
+    	propagateMoves();
+	}
+
+	private MachineState getNextState(
+			Set<GdlSentence> baseSentences,
+			Set<GdlSentence> inputSentences)
+	{
+		return getNextState(baseSentences, inputSentences, null);
+	}
+
+	private MachineState getNextState(
+			Set<GdlSentence> baseSentences,
+			Set<GdlSentence> inputSentences,
+			List<Proposition> additionalProps)
+	{
+		propagateMoves(baseSentences, inputSentences, additionalProps);
+
+        return getStateFromBase();
+	}
+
 
 	/**
 	 * Computes the next state given state and the list of moves.
@@ -420,11 +441,13 @@ public class PropNetStateMachine extends StateMachine
 	@Override
 	public MachineState getNextState(MachineState state, List<Move> moves) throws TransitionDefinitionException
 	{
-		clearPropNet();
-		Set<GdlSentence> baseSentences = state.getContents();
-		Set<GdlSentence> inputSentences = toDoes(moves);
+		synchronized(this)
+		{
+			Set<GdlSentence> baseSentences = state.getContents();
+			Set<GdlSentence> inputSentences = toDoes(moves);
 
-		return getNextState(baseSentences, inputSentences);
+			return getNextState(baseSentences, inputSentences);
+		}
 	}
 
 	/**
@@ -442,7 +465,7 @@ public class PropNetStateMachine extends StateMachine
 	 * @return The order in which the truth values of propositions need to be
 	 *         set.
 	 */
-	public void setOrdering()
+	private void setOrdering()
 	{
 		Queue<Component> queue = new LinkedList<Component>();
 
@@ -508,6 +531,7 @@ public class PropNetStateMachine extends StateMachine
 			int index = roleIndices.get(roles.get(i));
 			doeses.add(ProverQueryBuilder.toDoes(roles.get(i), moves.get(index)));
 		}
+
 		return doeses;
 	}
 
@@ -518,7 +542,7 @@ public class PropNetStateMachine extends StateMachine
 	 * @param p
 	 * @return a PropNetMove
 	 */
-	public static Move getMoveFromProposition(Proposition p)
+	private static Move getMoveFromProposition(Proposition p)
 	{
 		return new Move(p.getName().get(1));
 	}
