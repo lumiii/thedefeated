@@ -1,6 +1,6 @@
 package org.ggp.base.util.propnet.architecture.components;
 
-import org.ggp.base.player.gamer.statemachine.sample.RuntimeParameters;
+import org.ggp.base.player.gamer.statemachine.thedefeated.RuntimeParameters;
 import org.ggp.base.util.gdl.grammar.GdlSentence;
 import org.ggp.base.util.propnet.architecture.Component;
 

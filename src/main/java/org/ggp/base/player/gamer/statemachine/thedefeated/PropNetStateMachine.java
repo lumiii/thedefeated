@@ -1,4 +1,4 @@
-package org.ggp.base.player.gamer.statemachine.sample;
+package org.ggp.base.player.gamer.statemachine.thedefeated;
 
 import java.util.ArrayList;
 import java.util.Collections;

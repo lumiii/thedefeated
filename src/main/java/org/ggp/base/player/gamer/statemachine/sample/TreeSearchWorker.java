@@ -3,6 +3,10 @@ package org.ggp.base.player.gamer.statemachine.sample;
 import java.util.List;
 
 import org.apache.logging.log4j.Logger;
+import org.ggp.base.player.gamer.statemachine.thedefeated.GLog;
+import org.ggp.base.player.gamer.statemachine.thedefeated.GameUtilities;
+import org.ggp.base.player.gamer.statemachine.thedefeated.Node;
+import org.ggp.base.player.gamer.statemachine.thedefeated.RuntimeParameters;
 import org.ggp.base.util.statemachine.MachineState;
 import org.ggp.base.util.statemachine.Move;
 import org.ggp.base.util.statemachine.Role;

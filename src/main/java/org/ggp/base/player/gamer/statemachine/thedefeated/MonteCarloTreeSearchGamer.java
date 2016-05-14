@@ -1,4 +1,4 @@
-package org.ggp.base.player.gamer.statemachine.sample;
+package org.ggp.base.player.gamer.statemachine.thedefeated;
 
 import java.util.Date;
 import java.util.HashMap;
@@ -9,6 +9,8 @@ import java.util.Timer;
 import java.util.TimerTask;
 
 import org.apache.logging.log4j.Logger;
+import org.ggp.base.player.gamer.statemachine.sample.SampleGamer;
+import org.ggp.base.player.gamer.statemachine.sample.TreeSearchWorker;
 import org.ggp.base.util.statemachine.MachineState;
 import org.ggp.base.util.statemachine.Move;
 import org.ggp.base.util.statemachine.Role;

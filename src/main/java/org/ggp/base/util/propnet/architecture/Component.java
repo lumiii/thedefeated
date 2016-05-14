@@ -5,7 +5,7 @@ import java.util.Comparator;
 import java.util.HashSet;
 import java.util.Set;
 
-import org.ggp.base.player.gamer.statemachine.sample.RuntimeParameters;
+import org.ggp.base.player.gamer.statemachine.thedefeated.RuntimeParameters;
 import org.ggp.base.util.propnet.architecture.components.Proposition;
 
 /**

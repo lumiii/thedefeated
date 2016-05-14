@@ -26,7 +26,7 @@ import org.ggp.base.apps.player.match.MatchPanel;
 import org.ggp.base.apps.player.network.NetworkPanel;
 import org.ggp.base.player.GamePlayer;
 import org.ggp.base.player.gamer.Gamer;
-import org.ggp.base.player.gamer.statemachine.sample.RuntimeParameters;
+import org.ggp.base.player.gamer.statemachine.thedefeated.RuntimeParameters;
 import org.ggp.base.util.reflection.ProjectSearcher;
 import org.ggp.base.util.ui.NativeUI;
 
