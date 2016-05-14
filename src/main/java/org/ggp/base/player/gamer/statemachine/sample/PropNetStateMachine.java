@@ -20,7 +20,6 @@ import org.ggp.base.util.propnet.architecture.Component;
 import org.ggp.base.util.propnet.architecture.Component.Type;
 import org.ggp.base.util.propnet.architecture.PropNet;
 import org.ggp.base.util.propnet.architecture.components.Proposition;
-import org.ggp.base.util.propnet.architecture.components.Transition;
 import org.ggp.base.util.propnet.factory.OptimizingPropNetFactory;
 import org.ggp.base.util.statemachine.MachineState;
 import org.ggp.base.util.statemachine.Move;
@@ -42,6 +41,7 @@ public class PropNetStateMachine extends StateMachine
 
 	private Set<Proposition> trueBaseProps;
 	private Set<Proposition> trueInputProps;
+	private Set<Component> startingComponents = new HashSet<Component>();
 
 	/**
 	 * Initializes the PropNetStateMachine. You should compute the topological
@@ -57,8 +57,23 @@ public class PropNetStateMachine extends StateMachine
 				"Initializing prop net");
 
 			propNet = OptimizingPropNetFactory.create(description);
+
+			populateStarting();
+
+			log.info(GLog.PROPNET,
+				"Size: " + propNet.getComponents().size());
+
+			if (RuntimeParameters.OUTPUT_GRAPH_FILE)
+			{
+				String filePath = MachineParameters.outputFilename();
+				log.info(GLog.PROPNET,
+					"Logging graph output to:\n" + filePath);
+
+				propNet.renderToFile(filePath);
+			}
+
 			roles = propNet.getRoles();
-			roles = propNet.getRoles();
+
 			trueBaseProps = Collections.newSetFromMap(new ConcurrentHashMap<Proposition, Boolean>());
 			trueInputProps = Collections.newSetFromMap(new ConcurrentHashMap<Proposition, Boolean>());
 			//setOrdering();
@@ -66,6 +81,17 @@ public class PropNetStateMachine extends StateMachine
 		catch (InterruptedException e)
 		{
 			throw new RuntimeException(e);
+		}
+	}
+
+	private void populateStarting()
+	{
+		for (Component c : propNet.getComponents())
+		{
+			if (c.getInputs().isEmpty())
+			{
+				startingComponents.add(c);
+			}
 		}
 	}
 
@@ -105,10 +131,6 @@ public class PropNetStateMachine extends StateMachine
 
 	private void markProps(Map<GdlSentence, Proposition> props, Set<GdlSentence> markSentences)
 	{
-		// TODO: can optimize by having a separate set of base/input
-		// propositions
-		// that are true from before, then just iterate and adjust over those
-		// + set true for the rest that weren't in the set
 		for (Map.Entry<GdlSentence, Proposition> entry : props.entrySet())
 		{
 			Proposition prop = entry.getValue();
@@ -121,29 +143,28 @@ public class PropNetStateMachine extends StateMachine
 
     private void propagateMoves()
     {
-    	//Queue<Component> queue = new PriorityQueue<Component>(Component.comparator);
     	Queue<Component> queue = new LinkedList<Component>();
+    	Set<Component> transitions = new HashSet<Component>();
 
     	queue.addAll(propNet.getBasePropositions().values());
-    	queue.addAll(propNet.getInputPropositions().values());
-    	queue.add(propNet.getInitProposition());
+    	queue.addAll(startingComponents);
 
     	while(!queue.isEmpty())
     	{
     		Component node = queue.poll();
 
-    		boolean updateChildren;
+    		boolean updateChildren = true;
 
     		if (node instanceof Proposition)
     		{
     			Proposition prop = (Proposition)node;
-    			updateChildren = prop.isChanged();
+    			updateChildren = prop.shouldPropagate();
     			prop.setPropagated();
-    			updateChildren = true;
     		}
-    		else
+    		else if (node.getType() == Type.transition)
     		{
-    			updateChildren = true;
+    			transitions.add(node);
+    			updateChildren = false;
     		}
 
     		if (updateChildren)
@@ -159,14 +180,18 @@ public class PropNetStateMachine extends StateMachine
     					markProposition(childProp, value);
     				}
 
-    				// don't feed the base in again
-    				// this could cause an infinite loop
-    				if (child.getType() != Type.base)
-    				{
-    					queue.add(child);
-    				}
+    				queue.add(child);
     			}
     		}
+    	}
+
+    	// leave the bases to get the values last
+    	// gates can inadvertently pull the value from the base, which could cause a wrong traversal
+    	// this is a backwards propagation behaviour - we should change the behaviour of the gates
+    	for (Component transition : transitions)
+    	{
+    		Proposition base = (Proposition)transition.getSingleOutput();
+    		base.setValue(transition.getValue());
     	}
     }
 
@@ -312,55 +337,6 @@ public class PropNetStateMachine extends StateMachine
 
 	        return m;
 		}
-	}
-
-	private void testConnectivity(Transition transition)
-	{
-		Set<Component> set = new HashSet<>();
-    	Queue<Component> queue = new LinkedList<Component>();
-
-    	queue.addAll(propNet.getBasePropositions().values());
-    	set.addAll(propNet.getBasePropositions().values());
-    	queue.addAll(propNet.getInputPropositions().values());
-    	set.addAll(propNet.getInputPropositions().values());
-    	queue.add(propNet.getInitProposition());
-    	set.add(propNet.getInitProposition());
-
-    	System.out.println("Looking for transition ");
-    	System.out.println(transition);
-
-    	while (true)
-    	{
-    		Component node = queue.poll();
-    		System.out.println("Looking for " + transition);
-    		System.out.println(node);
-
-    		if (queue.isEmpty())
-    		{
-    			System.out.println("UHOH");
-    			while(true)
-    			{
-
-    			}
-    		}
-
-    		if (node.equals(transition))
-    		{
-    			System.out.println("FOUND TRANSITION");
-    			break;
-    		}
-    		else
-    		{
-    			for (Component c: node.getOutputs())
-    			{
-    				if (!set.contains(c))
-    				{
-    					queue.add(c);
-    					set.add(c);
-    				}
-    			}
-    		}
-    	}
 	}
 
 	private void clearPropNet()

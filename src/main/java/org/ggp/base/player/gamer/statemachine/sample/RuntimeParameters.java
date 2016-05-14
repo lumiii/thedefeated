@@ -6,6 +6,7 @@ public class RuntimeParameters
 	public static final int DEPTH_CHARGE_COUNT = 4;
 
 	public static final boolean MINIMAX = true;
+	public static final boolean DIFFERENTIAL_PROPAGATION = true;
 
 	public static final String DEFAULT_PLAYER = "MonteCarloTreeSearchGamer";
 
@@ -16,4 +17,10 @@ public class RuntimeParameters
 	public static final boolean LOG_MOVE_EVALUATION = true;
 	public static final boolean LOG_ERRORS = true;
 	public static final boolean LOG_PROPNET = true;
+
+	public static final boolean DISABLE_MAIN_THREAD = false;
+	public static final boolean OUTPUT_GRAPH_FILE = true;
+	// this value must be true if output_graph_file is true, otherwise
+	// render will fail
+	public static final boolean GRAPH_TOSTRING = false || OUTPUT_GRAPH_FILE;
 }

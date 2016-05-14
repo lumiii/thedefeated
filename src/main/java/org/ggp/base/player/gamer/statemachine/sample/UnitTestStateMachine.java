@@ -42,11 +42,18 @@ public class UnitTestStateMachine extends StateMachine
 	public int getGoal(MachineState state, Role role) throws GoalDefinitionException
 	{
 		int reference = referenceMachine.getGoal(state, role);
-		int test = testMachine.getGoal(state, role);
-
-		if (checkResults(new Integer(test), new Integer(reference)))
+		try
 		{
-			return test;
+			int test = testMachine.getGoal(state, role);
+
+			if (checkResults(new Integer(test), new Integer(reference)))
+			{
+				return test;
+			}
+		}
+		catch (GoalDefinitionException e)
+		{
+			checkException(e);
 		}
 
 		return -1;
@@ -98,12 +105,19 @@ public class UnitTestStateMachine extends StateMachine
 	public List<Move> getLegalMoves(MachineState state, Role role) throws MoveDefinitionException
 	{
 		List<Move> reference = referenceMachine.getLegalMoves(state, role);
-		List<Move> test = testMachine.getLegalMoves(state, role);
+		try
+		{
+			List<Move> test = testMachine.getLegalMoves(state, role);
 
-
-		if (checkResults(test, reference)){
-			return test;
+			if (checkResults(test, reference)){
+				return test;
+			}
 		}
+		catch (MoveDefinitionException e)
+		{
+			checkException(e);
+		}
+
 
 		return null;
 	}
@@ -111,12 +125,19 @@ public class UnitTestStateMachine extends StateMachine
 	@Override
 	public MachineState getNextState(MachineState state, List<Move> moves) throws TransitionDefinitionException
 	{
-		MachineState reference = testMachine.getNextState(state, moves);
-		MachineState test = testMachine.getNextState(state, moves);
-
-		if (checkResults(test, reference))
+		MachineState reference = referenceMachine.getNextState(state, moves);
+		try
 		{
-			return test;
+			MachineState test = testMachine.getNextState(state, moves);
+
+			if (checkResults(test, reference))
+			{
+				return test;
+			}
+		}
+		catch (TransitionDefinitionException e)
+		{
+			checkException(e);
 		}
 
 		return null;
@@ -138,8 +159,10 @@ public class UnitTestStateMachine extends StateMachine
 
 		if (!match)
 		{
+			StackTraceElement[] stacktrace = Thread.currentThread().getStackTrace();
+			StackTraceElement e = stacktrace[2];//maybe this number needs to be corrected
 			log.error(GLog.UNITTEST,
-					"getNextStateMismatch");
+					"Mismatch: " + e.getMethodName());
 			log.error(GLog.UNITTEST,
 					"Test:\n" + test);
 			log.error(GLog.UNITTEST,
@@ -149,5 +172,10 @@ public class UnitTestStateMachine extends StateMachine
 		}
 
 		return true;
+	}
+
+	private void checkException(Exception e)
+	{
+		log.catching(e);
 	}
 }

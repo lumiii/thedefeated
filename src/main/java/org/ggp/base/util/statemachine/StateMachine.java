@@ -8,6 +8,7 @@ import java.util.Map;
 import java.util.Random;
 import java.util.Set;
 
+import org.ggp.base.player.gamer.statemachine.sample.GLog;
 import org.ggp.base.util.gdl.grammar.Gdl;
 import org.ggp.base.util.gdl.grammar.GdlConstant;
 import org.ggp.base.util.gdl.grammar.GdlSentence;
@@ -452,6 +453,12 @@ public abstract class StateMachine
         int nDepth = 0;
         while(!isTerminal(state)) {
             nDepth++;
+            if (nDepth % 10 == 0)
+            {
+	            GLog.getRootLogger().info(GLog.THREAD_ACTIVITY,
+	            		"Depth charge currently at depth: " + nDepth);
+            }
+
             state = getNextStateDestructively(state, getRandomJointMove(state));
         }
         if(theDepth != null)

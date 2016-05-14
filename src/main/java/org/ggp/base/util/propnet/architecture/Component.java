@@ -5,7 +5,7 @@ import java.util.Comparator;
 import java.util.HashSet;
 import java.util.Set;
 
-import org.ggp.base.player.gamer.statemachine.sample.GLog;
+import org.ggp.base.player.gamer.statemachine.sample.RuntimeParameters;
 import org.ggp.base.util.propnet.architecture.components.Proposition;
 
 /**
@@ -37,23 +37,31 @@ public abstract class Component implements Serializable
 			// but will be pointless overhead once we know it's working
 			if (!o1.hasOrder() || !o2.hasOrder())
 			{
-				GLog.getRootLogger().error(GLog.PROPNET,
-					"Ordering invariant failed!");
+				//GLog.getRootLogger().error(GLog.PROPNET,
+					//"Ordering invariant failed!");
 			}
 
 			int n1 = o1.getOrder();
 			int n2 = o2.getOrder();
 
-			if (n1 > n2)
+			if (n1 == n2)
+			{
+				return 0;
+			}
+			else if (n1 == -1)
+			{
+				return -1;
+			}
+			else if (n2 == -1)
 			{
 				return 1;
 			}
-			else if (n2 > n1)
+			else if (n1 > n2)
 			{
 				return -1;
 			}
 
-			return 0;
+			return 1;
 		}
 	}
 
@@ -132,7 +140,7 @@ public abstract class Component implements Serializable
 
     // default always just say changed and let recompute happen
     // for correctness. each subclass should put in their own behaviour
-    public boolean isChanged()
+    public boolean shouldPropagate()
     {
         return true;
     }
@@ -218,22 +226,27 @@ public abstract class Component implements Serializable
      *            The value to use as the <tt>label</tt> attribute.
      * @return A representation of the Component in .dot format.
      */
-//    protected String toDot(String shape, String fillcolor, String label)
-//    {
-//        StringBuilder sb = new StringBuilder();
-//
-//        sb.append("\"@" + Integer.toHexString(hashCode()) + "\"[shape=" + shape + ", style= filled, fillcolor=" + fillcolor + ", label=\"" + label + "\"]; ");
-//        for ( Component component : getOutputs() )
-//        {
-//            sb.append("\"@" + Integer.toHexString(hashCode()) + "\"->" + "\"@" + Integer.toHexString(component.hashCode()) + "\"; ");
-//        }
-//
-//        return sb.toString();
-//    }
+    protected String toDot2(String shape, String fillcolor, String label)
+    {
+        StringBuilder sb = new StringBuilder();
+
+        sb.append("\"@" + Integer.toHexString(hashCode()) + "\"[shape=" + shape + ", style= filled, fillcolor=" + fillcolor + ", label=\"" + label + "\"]; ");
+        for ( Component component : getOutputs() )
+        {
+            sb.append("\"@" + Integer.toHexString(hashCode()) + "\"->" + "\"@" + Integer.toHexString(component.hashCode()) + "\"; ");
+        }
+
+        return sb.toString();
+    }
 
     protected String toDot(String shape, String fillcolor, String label)
     {
-    	return labelString() + "\n";
+    	if (RuntimeParameters.GRAPH_TOSTRING)
+    	{
+    		return toDot2(shape, fillcolor, label);
+    	}
+    	// else
+    	return toList();
     }
 
     public String toList()

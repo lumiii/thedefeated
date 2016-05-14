@@ -1,5 +1,6 @@
 package org.ggp.base.util.propnet.architecture.components;
 
+import org.ggp.base.player.gamer.statemachine.sample.RuntimeParameters;
 import org.ggp.base.util.gdl.grammar.GdlSentence;
 import org.ggp.base.util.propnet.architecture.Component;
 
@@ -13,12 +14,9 @@ public final class Proposition extends Component
     private GdlSentence name;
     /** The value of the Proposition. */
     private boolean init;
-    // this needs to be better written in a more concise way
-    // but I need to sleep
     private boolean propagated;
     private boolean value;
     private boolean prevValue;
-
 
     /**
      * Creates a new Proposition with name <tt>name</tt>.
@@ -68,10 +66,14 @@ public final class Proposition extends Component
     }
 
     @Override
-	public boolean isChanged()
+	public boolean shouldPropagate()
     {
-    	return true;
-        //return (!init || prevValue != value || !propagated);
+    	if (!RuntimeParameters.DIFFERENTIAL_PROPAGATION)
+    	{
+    		return true;
+    	}
+
+    	return (!init || prevValue != value || !propagated);
     }
 
     /**
@@ -100,7 +102,6 @@ public final class Proposition extends Component
     	}
     }
 
-    // hacky, remove soon
     public void setPropagated()
     {
     	this.propagated = true;

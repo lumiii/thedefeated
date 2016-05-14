@@ -26,6 +26,7 @@ public class GLog
 	public static final String S_MOVE_EVALUATION = "MoveEvaluation";
 	public static final String S_ERRORS = "Error";
 	public static final String S_PROPNET = "PropNet";
+	public static final String S_UNITTEST = "UnitTest";
 
 	public static final Marker MAIN_THREAD_ACTIVITY = MarkerManager.getMarker(S_MAIN_THREAD_ACTIVITY);
 	public static final Marker NODE_STATS = MarkerManager.getMarker(S_NODE_STATS);
@@ -34,6 +35,7 @@ public class GLog
 	public static final Marker MOVE_EVALUATION = MarkerManager.getMarker(S_MOVE_EVALUATION);
 	public static final Marker ERRORS = MarkerManager.getMarker(S_ERRORS);
 	public static final Marker PROPNET = MarkerManager.getMarker(S_PROPNET);
+	public static final Marker UNITTEST = MarkerManager.getMarker(S_UNITTEST);
 
 	public static final String BANNER = "==========";
 
@@ -51,6 +53,9 @@ public class GLog
 			Filter.Result.NEUTRAL);
 	private static final MarkerFilter F_PROPNET = MarkerFilter.createFilter(S_PROPNET, Filter.Result.DENY,
 			Filter.Result.NEUTRAL);
+	private static final MarkerFilter F_UNITTEST = MarkerFilter.createFilter(S_UNITTEST, Filter.Result.DENY,
+			Filter.Result.NEUTRAL);
+
 
 	static
 	{
