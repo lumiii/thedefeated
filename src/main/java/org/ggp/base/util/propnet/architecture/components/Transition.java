@@ -8,6 +8,7 @@ import org.ggp.base.util.propnet.architecture.Component;
 @SuppressWarnings("serial")
 public final class Transition extends Component
 {
+	private boolean value = false;
     /**
      * Returns the value of the input to the transition.
      *
@@ -16,7 +17,13 @@ public final class Transition extends Component
     @Override
     public boolean getValue()
     {
-        return getSingleInput().getValue();
+        return value;
+    }
+
+    @Override
+	public void setValueFromParent(boolean value)
+    {
+    	this.value = value;
     }
 
     /**
@@ -33,4 +40,10 @@ public final class Transition extends Component
     {
     	return Type.transition;
     }
+
+	@Override
+	public void resetState()
+	{
+		value = false;
+	}
 }

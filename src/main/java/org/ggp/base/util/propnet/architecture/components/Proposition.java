@@ -1,6 +1,5 @@
 package org.ggp.base.util.propnet.architecture.components;
 
-import org.ggp.base.player.gamer.statemachine.thedefeated.RuntimeParameters;
 import org.ggp.base.util.gdl.grammar.GdlSentence;
 import org.ggp.base.util.propnet.architecture.Component;
 
@@ -13,10 +12,7 @@ public final class Proposition extends Component
     /** The name of the Proposition. */
     private GdlSentence name;
     /** The value of the Proposition. */
-    private boolean init;
-    private boolean propagated;
     private boolean value;
-    private boolean prevValue;
 
     /**
      * Creates a new Proposition with name <tt>name</tt>.
@@ -27,10 +23,7 @@ public final class Proposition extends Component
     public Proposition(GdlSentence name)
     {
         this.name = name;
-        this.init = false;
         this.value = false;
-        this.prevValue = false;
-        this.propagated = false;
     }
 
     /**
@@ -65,15 +58,17 @@ public final class Proposition extends Component
         return value;
     }
 
-    @Override
-	public boolean shouldPropagate()
+    // functionally the same as setValueFromParent
+    // but semantically different - use this when explicitly marking a proposition node
+    // outside of propagation
+    public void markValue(boolean value)
     {
-    	if (!RuntimeParameters.DIFFERENTIAL_PROPAGATION)
-    	{
-    		return true;
-    	}
+    	this.value = value;
+    }
 
-    	return (!init || prevValue != value || !propagated);
+    public void ensurePropagate()
+    {
+    	this.propagatedValue = !value;
     }
 
     /**
@@ -82,34 +77,11 @@ public final class Proposition extends Component
      * @param value
      *            The new value of the Proposition.
      */
-    public void setValue(boolean value)
+    // propositions have no logic, just inherit the value
+    @Override
+	public void setValueFromParent(boolean value)
     {
-    	if (this.init)
-    	{
-    		this.prevValue = this.value;
-        	this.value = value;
-
-        	if (this.prevValue != this.value)
-    		{
-        		this.propagated = false;
-    		}
-    	}
-    	else
-    	{
-        	this.value = value;
-    		this.init = true;
-    		this.prevValue = !this.value;
-    	}
-    }
-
-    public void setPropagated()
-    {
-    	this.propagated = true;
-    }
-
-    public void unsetPropagated()
-    {
-    	this.propagated = false;
+    	this.value = value;
     }
 
     /**
@@ -133,4 +105,10 @@ public final class Proposition extends Component
     	// all propositions that are not base or input are view
     	return Type.view;
     }
+
+	@Override
+	public void resetState()
+	{
+		value = false;
+	}
 }

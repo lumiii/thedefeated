@@ -451,16 +451,16 @@ public abstract class StateMachine
      */
     public MachineState performDepthCharge(MachineState state, final int[] theDepth) throws TransitionDefinitionException, MoveDefinitionException {
         int nDepth = 0;
+
         while(!isTerminal(state)) {
             nDepth++;
-            if (nDepth % 10 == 0)
-            {
-	            GLog.getRootLogger().info(GLog.THREAD_ACTIVITY,
-	            		"Depth charge currently at depth: " + nDepth);
-            }
 
             state = getNextStateDestructively(state, getRandomJointMove(state));
         }
+
+        GLog.getRootLogger().info(GLog.THREAD_ACTIVITY,
+        		"Depth charge finished at depth " + nDepth);
+
         if(theDepth != null)
             theDepth[0] = nDepth;
         return state;

@@ -47,4 +47,34 @@ public final class Constant extends Component
     {
     	return Type.constant;
     }
+
+	@Override
+	public void setValueFromParent(boolean value)
+	{
+		throw new IllegalArgumentException("Can't set a value on a constant - it should have no parent");
+	}
+
+	@Override
+	public void setPropagated()
+	{
+		if (!propagatedOnce)
+		{
+			propagatedOnce = true;
+		}
+	}
+
+	@Override
+	public boolean shouldPropagate()
+	{
+		// the value of this will never change, just pivot on whether it's been ever used once
+		return !propagatedOnce;
+	}
+
+	@Override
+	public void resetState()
+	{
+		// nothing to do
+	}
+
+
 }

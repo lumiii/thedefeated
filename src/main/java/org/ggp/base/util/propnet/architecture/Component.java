@@ -77,6 +77,9 @@ public abstract class Component implements Serializable
 
     protected Type type;
 
+    protected boolean propagatedOnce = false;
+    protected boolean propagatedValue = false;
+
     /**
      * Creates a new Component with no inputs or outputs.
      */
@@ -138,12 +141,6 @@ public abstract class Component implements Serializable
     	return (order != -1);
     }
 
-    // default always just say changed and let recompute happen
-    // for correctness. each subclass should put in their own behaviour
-    public boolean shouldPropagate()
-    {
-        return true;
-    }
 
     /**
      * Adds a new output.
@@ -206,6 +203,56 @@ public abstract class Component implements Serializable
      * @return The value of the Component.
      */
     public abstract boolean getValue();
+
+    // let the parent of this component call this with its own value
+    // that is, you should only use this function as
+    // child.setValueFromParent(parent.getValue())
+    public abstract void setValueFromParent(boolean value);
+
+    public void setValueFromParent(boolean value, boolean firstPropagation)
+    {
+    	setValueFromParent(value);
+    }
+
+    // call this function whenever this component's value is propagated to its children
+    public void setPropagated()
+    {
+    	if (!propagatedOnce)
+    	{
+    		propagatedOnce = true;
+    	}
+
+    	propagatedValue = getValue();
+    }
+
+    public void unsetPropagated()
+    {
+    	// just a debug function
+    	// use this to ensure this node propagates forwards
+    	propagatedOnce = false;
+    }
+
+    public abstract void resetState();
+
+    public void reset()
+    {
+    	propagatedOnce = false;
+    	propagatedValue = false;
+    	resetState();
+    }
+
+    // check whether or not this component should be propagated
+    // aka has the truth value of this component changed since last propagated?
+    public boolean shouldPropagate()
+    {
+    	boolean currentValue = getValue();
+    	return (propagatedValue != currentValue) || !propagatedOnce;
+    }
+
+    public boolean hasPropagatedOnce()
+    {
+    	return propagatedOnce;
+    }
 
     /**
      * Returns a representation of the Component in .dot format.

@@ -120,7 +120,8 @@ public class TreeSearchWorker implements Runnable
 			catch (Exception e)
 			{
 				log.error(GLog.ERRORS,
-						"Exception encountered within thread", e);
+						"Exception encountered within thread");
+				log.catching(e);
 			}
 		}
 
@@ -155,7 +156,8 @@ public class TreeSearchWorker implements Runnable
 					catch (GoalDefinitionException | TransitionDefinitionException | MoveDefinitionException e)
 					{
 						log.error(GLog.ERRORS,
-								"Error encountered performing depth charge", e);
+								"Error encountered performing depth charge");
+						log.catching(e);
 					}
 				}
 

@@ -6,7 +6,6 @@ public class RuntimeParameters
 	public static final int DEPTH_CHARGE_COUNT = 4;
 
 	public static final boolean MINIMAX = true;
-	public static final boolean DIFFERENTIAL_PROPAGATION = true;
 
 	public static final String DEFAULT_PLAYER = "MonteCarloTreeSearchGamer";
 

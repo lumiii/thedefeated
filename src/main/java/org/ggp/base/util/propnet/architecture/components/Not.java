@@ -8,6 +8,7 @@ import org.ggp.base.util.propnet.architecture.Component;
 @SuppressWarnings("serial")
 public final class Not extends Component
 {
+	private boolean value = false;
     /**
      * Returns the inverse of the input to the not.
      *
@@ -16,7 +17,7 @@ public final class Not extends Component
     @Override
     public boolean getValue()
     {
-        return !getSingleInput().getValue();
+        return value;
     }
 
     /**
@@ -33,4 +34,17 @@ public final class Not extends Component
     {
     	return Type.logic;
     }
+
+	@Override
+	public void setValueFromParent(boolean value)
+	{
+		// inverting parent's value
+		this.value = !value;
+	}
+
+	@Override
+	public void resetState()
+	{
+		value = false;
+	}
 }

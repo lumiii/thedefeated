@@ -6,7 +6,6 @@ import java.util.HashSet;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
-import java.util.Map.Entry;
 import java.util.Queue;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
@@ -39,8 +38,9 @@ public class PropNetStateMachine extends StateMachine
 	/** The player roles */
 	private List<Role> roles;
 
-	private Set<Proposition> trueBaseProps;
-	private Set<Proposition> trueInputProps;
+	private Set<Proposition> trueBaseProps = Collections.newSetFromMap(new ConcurrentHashMap<Proposition, Boolean>());
+	private Set<Proposition> trueInputProps = Collections.newSetFromMap(new ConcurrentHashMap<Proposition, Boolean>());
+	private Set<Proposition> changedBaseProps = Collections.newSetFromMap(new ConcurrentHashMap<Proposition, Boolean>());
 	private Set<Component> startingComponents = new HashSet<Component>();
 
 	/**
@@ -58,7 +58,7 @@ public class PropNetStateMachine extends StateMachine
 
 			propNet = OptimizingPropNetFactory.create(description);
 
-			populateStarting();
+			populateStartingComponents();
 
 			log.info(GLog.PROPNET,
 				"Size: " + propNet.getComponents().size());
@@ -73,10 +73,6 @@ public class PropNetStateMachine extends StateMachine
 			}
 
 			roles = propNet.getRoles();
-
-			trueBaseProps = Collections.newSetFromMap(new ConcurrentHashMap<Proposition, Boolean>());
-			trueInputProps = Collections.newSetFromMap(new ConcurrentHashMap<Proposition, Boolean>());
-			//setOrdering();
 		}
 		catch (InterruptedException e)
 		{
@@ -84,7 +80,7 @@ public class PropNetStateMachine extends StateMachine
 		}
 	}
 
-	private void populateStarting()
+	private void populateStartingComponents()
 	{
 		for (Component c : propNet.getComponents())
 		{
@@ -99,17 +95,28 @@ public class PropNetStateMachine extends StateMachine
 	{
 		for (Component c : propNet.getComponents())
 		{
-			if (c instanceof Proposition)
-			{
-				Proposition prop = (Proposition)c;
-				prop.unsetPropagated();
-			}
+			c.reset();
 		}
 	}
 
 	private void markBaseProps(Set<GdlSentence> stateSentences)
 	{
-		markProps(propNet.getBasePropositions(), stateSentences);
+		changedBaseProps.clear();
+
+		for (Map.Entry<GdlSentence, Proposition> entry : propNet.getBasePropositions().entrySet())
+		{
+			Proposition prop = entry.getValue();
+			// sets the value to true if it's part of the moves, false otherwise
+			boolean value = stateSentences.contains(entry.getKey());
+			boolean previousValue = prop.getValue();
+
+			if (value != previousValue)
+			{
+				markComponent(prop, value, false);
+
+				changedBaseProps.add(prop);
+			}
+		}
 	}
 
 	private void markMoves(List<Move> moves)
@@ -124,27 +131,25 @@ public class PropNetStateMachine extends StateMachine
 		markInputProps(inputSentences);
 	}
 
-	private void markInputProps(Set<GdlSentence> inputSentence)
+	private void markInputProps(Set<GdlSentence> inputSentences)
 	{
-		markProps(propNet.getInputPropositions(), inputSentence);
-	}
-
-	private void markProps(Map<GdlSentence, Proposition> props, Set<GdlSentence> markSentences)
-	{
-		for (Map.Entry<GdlSentence, Proposition> entry : props.entrySet())
+		for (Map.Entry<GdlSentence, Proposition> entry : propNet.getInputPropositions().entrySet())
 		{
 			Proposition prop = entry.getValue();
 			// sets the value to true if it's part of the moves, false otherwise
-			boolean value = markSentences.contains(entry.getKey());
+			boolean value = inputSentences.contains(entry.getKey());
+			boolean previousValue = prop.getValue();
 
-			markProposition(prop, value);
+			if (value != previousValue)
+			{
+				markComponent(prop, value, false);
+			}
 		}
 	}
 
     private void propagateMoves()
     {
     	Queue<Component> queue = new LinkedList<Component>();
-    	Set<Component> transitions = new HashSet<Component>();
 
     	queue.addAll(propNet.getBasePropositions().values());
     	queue.addAll(startingComponents);
@@ -153,19 +158,7 @@ public class PropNetStateMachine extends StateMachine
     	{
     		Component node = queue.poll();
 
-    		boolean updateChildren = true;
-
-    		if (node instanceof Proposition)
-    		{
-    			Proposition prop = (Proposition)node;
-    			updateChildren = prop.shouldPropagate();
-    			prop.setPropagated();
-    		}
-    		else if (node.getType() == Type.transition)
-    		{
-    			transitions.add(node);
-    			updateChildren = false;
-    		}
+    		boolean updateChildren = node.shouldPropagate();
 
     		if (updateChildren)
     		{
@@ -173,52 +166,72 @@ public class PropNetStateMachine extends StateMachine
 
     			for (Component child : node.getOutputs())
     			{
-    				if (child instanceof Proposition)
+    				markComponent(child, value, !node.hasPropagatedOnce());
+
+    				if (child.getType() != Type.base)
     				{
-    					Proposition childProp = (Proposition)child;
-
-    					markProposition(childProp, value);
+    					queue.add(child);
     				}
-
-    				queue.add(child);
     			}
+
+    			node.setPropagated();
     		}
     	}
 
-    	// leave the bases to get the values last
-    	// gates can inadvertently pull the value from the base, which could cause a wrong traversal
-    	// this is a backwards propagation behaviour - we should change the behaviour of the gates
-    	for (Component transition : transitions)
-    	{
-    		Proposition base = (Proposition)transition.getSingleOutput();
-    		base.setValue(transition.getValue());
-    	}
-    }
-
-    private void markProposition(Proposition prop, boolean value)
-    {
-    	prop.setValue(value);
-
-		if (prop.getType() == Type.base)
+		// this is required because we could have marked a base prop to be a different value than it was
+		// but its parent transition may not necessarily propagate a new value to the base prop
+		// if it's stale. this results in a base prop having an inconsistent value for that iteration
+		// of propagation. for performance, update only the base props that we manually toggled
+		for (Proposition p : changedBaseProps)
 		{
-			if (value)
+			boolean transitionValue = p.getSingleInput().getValue();
+			boolean value = p.getValue();
+
+			if (value != transitionValue)
 			{
-				trueBaseProps.add(prop);
-			}
-			else
-			{
-				trueBaseProps.remove(prop);
+				markComponent(p, transitionValue, false);
 			}
 		}
-		else if (prop.getType() == Type.input)
+    }
+
+    private void markComponent(Component component, boolean value, boolean firstPropagation)
+    {
+    	component.setValueFromParent(value, firstPropagation);
+
+		if (component.getType() == Type.base)
 		{
+			Proposition prop = (Proposition)component;
 			if (value)
 			{
-				trueInputProps.add(prop);
+				if (!trueBaseProps.contains(prop))
+				{
+					trueBaseProps.add(prop);
+				}
 			}
 			else
 			{
-				trueInputProps.remove(prop);
+				if (trueBaseProps.contains(prop))
+				{
+					trueBaseProps.remove(prop);
+				}
+			}
+		}
+		else if (component.getType() == Type.input)
+		{
+			Proposition prop = (Proposition)component;
+			if (value)
+			{
+				if (!trueInputProps.contains(prop))
+				{
+					trueInputProps.add(prop);
+				}
+			}
+			else
+			{
+				if (trueInputProps.contains(prop))
+				{
+					trueInputProps.remove(prop);
+				}
 			}
 		}
     }
@@ -300,6 +313,8 @@ public class PropNetStateMachine extends StateMachine
 			Set<GdlSentence> emptySet = Collections.emptySet();
 			MachineState nextState = getNextState(emptySet, emptySet, list);
 
+			propNet.getInitProposition().setValueFromParent(false);
+
 			return nextState;
 		}
 	}
@@ -339,21 +354,6 @@ public class PropNetStateMachine extends StateMachine
 		}
 	}
 
-	private void clearPropNet()
-	{
-		for (Component component : propNet.getComponents())
-		{
-			if (component instanceof Proposition)
-			{
-				Proposition prop = (Proposition)component;
-				prop.setValue(false);
-			}
-		}
-
-		trueBaseProps.clear();
-		trueInputProps.clear();
-	}
-
 	private void propagateMoves(Set<GdlSentence> baseSentences)
 	{
 		propagateMoves(baseSentences, null, null);
@@ -371,8 +371,6 @@ public class PropNetStateMachine extends StateMachine
 			Set<GdlSentence> inputSentences,
 			List<Proposition> additionalProps)
 	{
-		clearPropNet();
-
 		markBaseProps(baseSentences);
 
 		if (inputSentences == null)
@@ -386,7 +384,7 @@ public class PropNetStateMachine extends StateMachine
     	{
 	    	for (Proposition p : additionalProps)
 	    	{
-	    		p.setValue(true);
+	    		p.markValue(true);
 	    	}
     	}
 
@@ -407,7 +405,7 @@ public class PropNetStateMachine extends StateMachine
 	{
 		propagateMoves(baseSentences, inputSentences, additionalProps);
 
-        return getStateFromBase();
+        return getStateFromCachedBase();
 	}
 
 
@@ -424,56 +422,6 @@ public class PropNetStateMachine extends StateMachine
 
 			return getNextState(baseSentences, inputSentences);
 		}
-	}
-
-	/**
-	 * This should compute the topological ordering of propositions. Each
-	 * component is either a proposition, logical gate, or transition. Logical
-	 * gates and transitions only have propositions as inputs.
-	 *
-	 * The base propositions and input propositions should always be exempt from
-	 * this ordering.
-	 *
-	 * The base propositions values are set from the MachineState that
-	 * operations are performed on and the input propositions are set from the
-	 * Moves that operations are performed on as well (if any).
-	 *
-	 * @return The order in which the truth values of propositions need to be
-	 *         set.
-	 */
-	private void setOrdering()
-	{
-		Queue<Component> queue = new LinkedList<Component>();
-
-		int order = 1;
-		for (Entry<GdlSentence, Proposition> entry : propNet.getBasePropositions().entrySet())
-		{
-			Proposition prop = entry.getValue();
-
-			Component transition = prop.getSingleInput();
-			transition.setOrder(order);
-			order++;
-
-			queue.add(transition);
-		}
-
-		while (!queue.isEmpty())
-		{
-			Component component = queue.poll();
-			for (Component child : component.getInputs())
-			{
-				// prevents cycles, either a local one (loop)
-				// or a global one (back to transition gates)
-				if (!child.hasOrder())
-				{
-					child.setOrder(order);
-					order++;
-					queue.add(child);
-				}
-			}
-		}
-
-		log.info(GLog.PROPNET, "Ordering added up to " + order);
 	}
 
 	/* Already implemented for you */
@@ -548,7 +496,7 @@ public class PropNetStateMachine extends StateMachine
 		Set<GdlSentence> contents = new HashSet<GdlSentence>();
 		for (Proposition p : propNet.getBasePropositions().values())
 		{
-			p.setValue(p.getSingleInput().getValue());
+			p.setValueFromParent(p.getSingleInput().getValue());
 			if (p.getValue())
 			{
 				contents.add(p.getName());
