@@ -30,8 +30,6 @@ public abstract class SampleGamer extends StateMachineGamer
         // Sample gamers do no metagaming at the beginning of the match.
     }
 
-
-
     /** This will currently return "SampleGamer"
      * If you are working on : public abstract class MyGamer extends SampleGamer
      * Then this function would return "MyGamer"
@@ -44,7 +42,12 @@ public abstract class SampleGamer extends StateMachineGamer
     // This is the default State Machine
     @Override
     public StateMachine getInitialStateMachine() {
-        return new CachedStateMachine(new ProverStateMachine());
+    	if (RuntimeParameters.UNITTEST_PROPNET)
+    	{
+    		return new UnitTestStateMachine(new PropNetStateMachine(), new ProverStateMachine());
+    	}
+
+    	return new CachedStateMachine(new PropNetStateMachine());
     }
 
     // This is the default Sample Panel

@@ -51,7 +51,23 @@ public class TreeSearchWorker implements Runnable
 
 	public void init(StateMachine stateMachine, Role role)
 	{
-		this.stateMachine = new CachedStateMachine(stateMachine);
+		// disable caching behaviour if unittesting
+		// so we can hit our propagation routines every time
+		// try to use this with a single thread - otherwise there will be a lot of
+		// locked up threads
+		// TODO: find a way to better parallelize our propnet
+		// right now we can't service more than one propagation at the same time
+		// perhaps multiple propnet statemachines (same # as # of threads?)
+		// but this could cause memory blowup
+		if (!RuntimeParameters.UNITTEST_PROPNET)
+		{
+			this.stateMachine = new CachedStateMachine(stateMachine);
+		}
+		else
+		{
+			this.stateMachine = stateMachine;
+		}
+
 		this.playerRole = role;
 		this.root = null;
 		this.newRoot = null;
@@ -108,7 +124,6 @@ public class TreeSearchWorker implements Runnable
 		log.info(GLog.THREAD_ACTIVITY,
 				"Stopping thread");
 	}
-
 
 	private void treeSearch() throws MoveDefinitionException, TransitionDefinitionException
 	{
