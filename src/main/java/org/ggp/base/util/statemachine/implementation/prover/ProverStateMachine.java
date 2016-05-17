@@ -173,4 +173,12 @@ public class ProverStateMachine extends StateMachine
 	{
 		return false;
 	}
+
+	@Override
+	public List<Move> getLegalMovesComplementSub(MachineState state, Role role, Subgame subgame)
+			throws MoveDefinitionException
+	{
+		// TODO Auto-generated method stub
+		return null;
+	}
 }

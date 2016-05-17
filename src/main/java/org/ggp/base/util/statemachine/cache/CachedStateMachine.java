@@ -197,4 +197,12 @@ public final class CachedStateMachine extends StateMachine
 	{
 		return backingStateMachine.canPlaySubgames();
 	}
+
+	@Override
+	public List<Move> getLegalMovesComplementSub(MachineState state, Role role, Subgame subgame)
+			throws MoveDefinitionException
+	{
+		// TODO Auto-generated method stub
+		return backingStateMachine.getLegalMovesComplementSub(state, role, subgame);
+	}
 }

@@ -1,10 +1,13 @@
 package org.ggp.base.player.gamer.statemachine.thedefeated;
 
+import java.util.ArrayList;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
+import java.util.Random;
+import java.util.Set;
 import java.util.Timer;
 import java.util.TimerTask;
 
@@ -35,6 +38,7 @@ public class MonteCarloTreeSearchGamer extends SampleGamer
 	private Timer timer = null;
 	private ThreadTimer threadTimer = null;
 	private Object lock = null;
+	private Set<Subgame> subs;
 
 	static
 	{
@@ -122,6 +126,8 @@ public class MonteCarloTreeSearchGamer extends SampleGamer
 	public void stateMachineMetaGame(long timeout)
 			throws TransitionDefinitionException, MoveDefinitionException, GoalDefinitionException
 	{
+
+
 		log.info(GLog.MAIN_THREAD_ACTIVITY,
 				GLog.BANNER + " Beginning meta game " + GLog.BANNER);
 		setMetaTimeout(timeout);
@@ -130,6 +136,8 @@ public class MonteCarloTreeSearchGamer extends SampleGamer
 
 		StateMachine stateMachine = getStateMachine();
 		Role role = getRole();
+		subs = stateMachine.getSubgames();
+		int minDepth = findMinDepth(stateMachine.getInitialState());
 
 		TreeSearchWorker.globalInit();
 
@@ -143,9 +151,33 @@ public class MonteCarloTreeSearchGamer extends SampleGamer
 		childStates.clear();
 
 		updateRoot(getCurrentState());
+
+		MachineState initial = stateMachine.getInitialState();
+		List<List<Move>> moves = utility.findAllMoves(initial);
+		int roleIndex = stateMachine.getRoleIndices().get(role);
+		for (List<Move> m : moves)
+		{
+			MachineState newState = stateMachine.getNextState(initial, m);
+			boolean maxNode = utility.playerHasMoves(newState);
+			Random rand = new Random();
+			for(Subgame sub : subs)
+			{
+				if(sub.getInputProps().contains(m.get(roleIndex)))
+				{
+					Node newNode = new Node(root, newState, m, maxNode, sub);
+					root.children.add(newNode);
+				}
+			}
+		}
+		root.visit=1;
+
+
 		childStates.put(root.state, root);
 
-		updateWorkers(root);
+		updateWorkers(root, minDepth);
+
+
+
 		startWorkers();
 
 		waitForTimeout();
@@ -153,6 +185,49 @@ public class MonteCarloTreeSearchGamer extends SampleGamer
 		setTimeout(0);
 		log.info(GLog.MAIN_THREAD_ACTIVITY,
 				GLog.BANNER + " Ending meta game " + GLog.BANNER);
+	}
+
+	private int findMinDepth(MachineState currentState) throws MoveDefinitionException, TransitionDefinitionException
+	{
+		StateMachine stateMachine = getStateMachine();
+		int minDepth = 0;
+		Random rand  = new Random();
+		int numCharges = 10;
+		for(Subgame sub : subs)
+		{
+			for(int i=0; i<numCharges; i++)
+			{
+				int depth=0;
+				MachineState state = new MachineState(currentState.getContents());
+				while(!stateMachine.isTerminalSub(state, sub))
+				{
+					List<Move> randMove = new ArrayList<Move>();
+					for(Role r : stateMachine.getRoles())
+					{
+						if(r.equals(getRole()))
+						{
+							List<Move> moves = stateMachine.getLegalMovesComplementSub(state, r, sub);
+							Move m = moves.get(rand.nextInt(moves.size()));
+							randMove.add(m);
+						}
+						else
+						{
+							List<Move> moves = stateMachine.getLegalMovesSub(state, r, sub);
+							Move m = moves.get(rand.nextInt(moves.size()));
+							randMove.add(m);
+						}
+					}
+					state=stateMachine.getNextStateSub(state, randMove, sub);
+					depth++;
+				}
+				if(depth < minDepth)
+				{
+					minDepth = depth;
+				}
+			}
+
+		}
+		return minDepth;
 	}
 
 	@Override
@@ -168,7 +243,8 @@ public class MonteCarloTreeSearchGamer extends SampleGamer
 		MachineState currentState = getCurrentState();
 
 		updateRoot(currentState);
-		updateWorkers(root);
+
+		updateWorkers(root, findMinDepth(getCurrentState()));
 
 		for (Node child : root.children)
 		{
@@ -329,7 +405,7 @@ public class MonteCarloTreeSearchGamer extends SampleGamer
 	{
 		if (root == null)
 		{
-			root = new Node(null, currentState, null, true);
+			root = new Node(null, currentState, null, true, null);
 		}
 		else
 		{
@@ -342,7 +418,7 @@ public class MonteCarloTreeSearchGamer extends SampleGamer
 			}
 			else
 			{
-				root = new Node(null, currentState, null, true);
+				root = new Node(null, currentState, null, true, null);
 				log.error(GLog.ERRORS, "Missed finding the tree - investigate");
 			}
 
@@ -350,11 +426,12 @@ public class MonteCarloTreeSearchGamer extends SampleGamer
 		}
 	}
 
-	private void updateWorkers(Node root) throws MoveDefinitionException, TransitionDefinitionException
+	private void updateWorkers(Node root, int minDepth) throws MoveDefinitionException, TransitionDefinitionException
 	{
 		for (int i = 0; i < workers.length; i++)
 		{
 			workers[i].setRoot(root);
+			workers[i].setMinDepth(minDepth);
 		}
 	}
 

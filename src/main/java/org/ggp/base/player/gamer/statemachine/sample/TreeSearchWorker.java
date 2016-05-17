@@ -1,6 +1,8 @@
 package org.ggp.base.player.gamer.statemachine.sample;
 
+import java.util.ArrayList;
 import java.util.List;
+import java.util.Random;
 
 import org.apache.logging.log4j.Logger;
 import org.ggp.base.player.gamer.statemachine.thedefeated.GLog;
@@ -41,12 +43,17 @@ public class TreeSearchWorker implements Runnable
 	private Node newRoot;
 
 	private GameUtilities utility;
-
+	private int minDepth;
 	public TreeSearchWorker(int id)
 	{
 		this.id = id;
 	}
 
+
+	public void setMinDepth(int depth)
+	{
+		minDepth = depth;
+	}
 	public static void globalInit()
 	{
 		nodesVisited = 0;
@@ -138,7 +145,7 @@ public class TreeSearchWorker implements Runnable
 		{
 			nodesVisited++;
 
-			if (!stateMachine.findTerminalp(node.state))
+			if (!stateMachine.isTerminalSub(node.state, node.subgame))
 			{
 				expand(node);
 
@@ -149,8 +156,31 @@ public class TreeSearchWorker implements Runnable
 				{
 					try
 					{
-						MachineState terminalState = stateMachine.performDepthCharge(node.state, null);
-						totalScore += stateMachine.getGoal(terminalState, playerRole);
+						int depth = 0;
+						Random rand = new Random();
+						MachineState terminalState = node.state;
+						while(!stateMachine.isTerminalSub(terminalState, node.subgame) && depth < minDepth)
+						{
+							depth++;
+							List<Move> randMove = new ArrayList<Move>();
+							for(Role r : stateMachine.getRoles())
+							{
+								List<Move> moves = stateMachine.getLegalMovesSub(terminalState, r, node.subgame);
+								Move m = moves.get(rand.nextInt(moves.size()));
+								randMove.add(m);
+
+							}
+							terminalState = stateMachine.getNextStateSub(terminalState, randMove, node.subgame);
+
+						}
+						if(stateMachine.isTerminalSub(terminalState, node.subgame))
+						{
+							totalScore += stateMachine.getGoalSub(terminalState, playerRole, node.subgame);
+						}
+						else
+						{
+							totalScore += 0;
+						}
 						visits++;
 					}
 					catch (GoalDefinitionException | TransitionDefinitionException | MoveDefinitionException e)
@@ -167,7 +197,7 @@ public class TreeSearchWorker implements Runnable
 			{
 				try
 				{
-					int score = stateMachine.getGoal(node.state, playerRole);
+					int score = stateMachine.getGoalSub(node.state, playerRole, node.subgame);
 
 					terminalNodeVisited++;
 
@@ -293,14 +323,14 @@ public class TreeSearchWorker implements Runnable
 
 	private void expand(Node node) throws MoveDefinitionException, TransitionDefinitionException
 	{
-		List<List<Move>> moves = utility.findAllMoves(node.state);
+		List<List<Move>> moves = utility.findAllMoves(node.state, node.subgame);
 		for (List<Move> m : moves)
 		{
-			MachineState newState = stateMachine.getNextState(node.state, m);
+			MachineState newState = stateMachine.getNextStateSub(node.state, m, node.subgame);
 			boolean maxNode = utility.playerHasMoves(newState);
-			Node newNode = new Node(node, newState, m, maxNode);
+				Node newNode = new Node(node, newState, m, maxNode, node.subgame);
+				node.children.add(newNode);
 
-			node.children.add(newNode);
 		}
 	}
 

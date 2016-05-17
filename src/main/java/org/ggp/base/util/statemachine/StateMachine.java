@@ -177,6 +177,7 @@ public abstract class StateMachine
     public abstract int getGoalSub(MachineState state, Role role, Subgame subgame) throws GoalDefinitionException;
     public abstract boolean isTerminalSub(MachineState state, Subgame subgame);
     public abstract List<Move> getLegalMovesSub(MachineState state, Role role, Subgame subgame) throws MoveDefinitionException;
+    public abstract List<Move> getLegalMovesComplementSub(MachineState state, Role role, Subgame subgame) throws MoveDefinitionException;
     public abstract MachineState getNextStateSub(MachineState state, List<Move> moves, Subgame subgame) throws TransitionDefinitionException;
 
     // The following methods are included in the abstract StateMachine base so

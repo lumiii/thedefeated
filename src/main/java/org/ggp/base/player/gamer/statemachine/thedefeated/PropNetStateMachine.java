@@ -664,21 +664,26 @@ public class PropNetStateMachine extends StateMachine
 	public int getGoalSub(MachineState state, Role role, Subgame subgame) throws GoalDefinitionException
 	{
 		// TODO Auto-generated method stub
-		return 0;
+		return getGoal(state, role);
 	}
 
 	@Override
 	public boolean isTerminalSub(MachineState state, Subgame subgame)
 	{
 		// TODO Auto-generated method stub
-		return false;
+		return isTerminal(state);
 	}
 
 	@Override
 	public List<Move> getLegalMovesSub(MachineState state, Role role, Subgame subgame) throws MoveDefinitionException
 	{
 		// TODO Auto-generated method stub
-		return null;
+		List<Move> legals = getLegalMoves(state, role);
+		ArrayList<Move> diff = new ArrayList<Move>(legals);
+		diff.removeAll(subgame.getInputProps());
+		ArrayList<Move> intersect = new ArrayList<Move>(legals);
+		intersect.removeAll(diff);
+		return intersect;
 	}
 
 	@Override
@@ -686,12 +691,24 @@ public class PropNetStateMachine extends StateMachine
 			throws TransitionDefinitionException
 	{
 		// TODO Auto-generated method stub
-		return null;
+		return getNextState(state, moves);
 	}
 
 	@Override
 	public boolean canPlaySubgames()
 	{
 		return true;
+	}
+
+
+	@Override
+	public List<Move> getLegalMovesComplementSub(MachineState state, Role role, Subgame subgame)
+			throws MoveDefinitionException
+	{
+		// TODO Auto-generated method stub
+		List<Move> legals = getLegalMoves(state, role);
+		ArrayList<Move> diff = new ArrayList<Move>(legals);
+		diff.removeAll(subgame.getInputProps());
+		return diff;
 	}
 }

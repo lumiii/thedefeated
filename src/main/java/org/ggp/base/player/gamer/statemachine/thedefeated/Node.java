@@ -21,8 +21,9 @@ public class Node
 	public AbstractQueue<Node> children;
 	public final MachineState state;
 	public final List<Move> move;
+	public final Subgame subgame;
 
-	public Node(Node par, MachineState stat, List<Move> m, boolean playerHasChoice)
+	public Node(Node par, MachineState stat, List<Move> m, boolean playerHasChoice, Subgame sub)
 	{
 		utility = 0;
 		visit = 0;
@@ -33,5 +34,6 @@ public class Node
 		move = m;
 		maxNode = playerHasChoice || !RuntimeParameters.MINIMAX;
 		locked = false;
+		subgame = sub;
 	}
 }
