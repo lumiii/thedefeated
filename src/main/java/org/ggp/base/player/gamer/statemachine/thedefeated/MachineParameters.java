@@ -1,4 +1,6 @@
-package org.ggp.base.player.gamer.statemachine.sample;
+package org.ggp.base.player.gamer.statemachine.thedefeated;
+
+import java.util.Date;
 
 public class MachineParameters
 {
@@ -9,4 +11,13 @@ public class MachineParameters
 
 	// amount of time to buffer before the timeout
 	public static final long TIME_BUFFER = 2000;
+
+	private static final String OUTPUT_FILE = "D:\\227b\\graph";
+	private static final String OUTPUT_FILE_EXTENSION = ".dot";
+
+	public static String outputFilename()
+	{
+		Date date = new Date();
+		return OUTPUT_FILE + "-" + date.getTime() + OUTPUT_FILE_EXTENSION;
+	}
 }
