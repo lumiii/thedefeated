@@ -4,9 +4,6 @@ import org.ggp.base.apps.player.detail.DetailPanel;
 import org.ggp.base.apps.player.detail.SimpleDetailPanel;
 import org.ggp.base.player.gamer.exception.GamePreviewException;
 import org.ggp.base.player.gamer.statemachine.StateMachineGamer;
-import org.ggp.base.player.gamer.statemachine.thedefeated.PropNetStateMachine;
-import org.ggp.base.player.gamer.statemachine.thedefeated.RuntimeParameters;
-import org.ggp.base.player.gamer.statemachine.thedefeated.UnitTestStateMachine;
 import org.ggp.base.util.game.Game;
 import org.ggp.base.util.statemachine.StateMachine;
 import org.ggp.base.util.statemachine.cache.CachedStateMachine;
@@ -45,12 +42,7 @@ public abstract class SampleGamer extends StateMachineGamer
     // This is the default State Machine
     @Override
     public StateMachine getInitialStateMachine() {
-    	if (RuntimeParameters.UNITTEST_PROPNET)
-    	{
-    		return new UnitTestStateMachine(new PropNetStateMachine(), new ProverStateMachine());
-    	}
-
-    	return new CachedStateMachine(new PropNetStateMachine());
+    	return new CachedStateMachine(new ProverStateMachine());
     }
 
     // This is the default Sample Panel

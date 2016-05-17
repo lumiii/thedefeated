@@ -15,9 +15,11 @@ import org.ggp.base.util.statemachine.MachineState;
 import org.ggp.base.util.statemachine.Move;
 import org.ggp.base.util.statemachine.Role;
 import org.ggp.base.util.statemachine.StateMachine;
+import org.ggp.base.util.statemachine.cache.CachedStateMachine;
 import org.ggp.base.util.statemachine.exceptions.GoalDefinitionException;
 import org.ggp.base.util.statemachine.exceptions.MoveDefinitionException;
 import org.ggp.base.util.statemachine.exceptions.TransitionDefinitionException;
+import org.ggp.base.util.statemachine.implementation.prover.ProverStateMachine;
 
 public class MonteCarloTreeSearchGamer extends SampleGamer
 {
@@ -32,6 +34,7 @@ public class MonteCarloTreeSearchGamer extends SampleGamer
 
 	private Timer timer = null;
 	private ThreadTimer threadTimer = null;
+	private Object lock = null;
 
 	static
 	{
@@ -41,11 +44,11 @@ public class MonteCarloTreeSearchGamer extends SampleGamer
 	class ThreadTimer extends TimerTask
 	{
 		private boolean disable;
-		private Thread wakeupThread = null;
+		private Object lock;
 
-		public ThreadTimer(Thread thread)
+		public ThreadTimer(Object lock)
 		{
-			this.wakeupThread = thread;
+			this.lock = lock;
 			this.disable = false;
 		}
 
@@ -59,7 +62,11 @@ public class MonteCarloTreeSearchGamer extends SampleGamer
 		{
 			if (!this.disable)
 			{
-				wakeupThread.interrupt();
+				synchronized(lock)
+				{
+					lock.notify();
+				}
+
 				log.info(GLog.MAIN_THREAD_ACTIVITY,
 						"Waking up main thread from sleep");
 			}
@@ -75,7 +82,7 @@ public class MonteCarloTreeSearchGamer extends SampleGamer
 			threads[i] = new Thread(workers[i]);
 		}
 
-		timer = new Timer();
+		lock = new Object();
 	}
 
 	@Override
@@ -94,6 +101,16 @@ public class MonteCarloTreeSearchGamer extends SampleGamer
 
 	private void endGame()
 	{
+		Thread.interrupted();
+		if (threadTimer != null)
+		{
+			threadTimer.disable();
+			threadTimer = null;
+		}
+		timer.cancel();
+		timer.purge();
+		timer = null;
+
 		stopWorkers();
 		root = null;
 		childStates.clear();
@@ -107,7 +124,9 @@ public class MonteCarloTreeSearchGamer extends SampleGamer
 	{
 		log.info(GLog.MAIN_THREAD_ACTIVITY,
 				GLog.BANNER + " Beginning meta game " + GLog.BANNER);
-		setTimeout(timeout + 1000);
+		setMetaTimeout(timeout);
+
+		timer = new Timer();
 
 		StateMachine stateMachine = getStateMachine();
 		Role role = getRole();
@@ -156,9 +175,7 @@ public class MonteCarloTreeSearchGamer extends SampleGamer
 			childStates.put(child.state, child);
 		}
 
-		log.info(GLog.MAIN_THREAD_ACTIVITY, "Before waiting...");
 		waitForTimeout();
-		log.info(GLog.MAIN_THREAD_ACTIVITY, "After waiting");
 
 		Role role = getRole();
 
@@ -210,18 +227,26 @@ public class MonteCarloTreeSearchGamer extends SampleGamer
 	{
 		while (!isTimeout())
 		{
+			log.info(GLog.MAIN_THREAD_ACTIVITY, "Before waiting...");
 			try
 			{
-				threadTimer = new ThreadTimer(Thread.currentThread());
-				timer.schedule(threadTimer, getRemainingTime());
-				Thread.sleep(getRemainingTime());
-				threadTimer.disable();
+				threadTimer = new ThreadTimer(lock);
+				long sleep_interval = getRemainingTime();
+				log.info(GLog.MAIN_THREAD_ACTIVITY, "Sleeping for: " + sleep_interval);
+
+				synchronized(lock)
+				{
+					timer.schedule(threadTimer, sleep_interval);
+					lock.wait(sleep_interval);
+				}
 			}
 			catch (InterruptedException e)
 			{
 			}
 
 			threadTimer = null;
+			Thread.interrupted();
+			log.info(GLog.MAIN_THREAD_ACTIVITY, "After waiting");
 		}
 	}
 
@@ -333,6 +358,18 @@ public class MonteCarloTreeSearchGamer extends SampleGamer
 		}
 	}
 
+	private void setMetaTimeout(long timeout)
+	{
+		if (timeout != 0)
+		{
+			setTimeout(timeout + MachineParameters.META_TIME_PAD);
+		}
+		else
+		{
+			setTimeout(0);
+		}
+	}
+
 	private void setTimeout(long timeout)
 	{
 		if (timeout != 0)
@@ -360,6 +397,16 @@ public class MonteCarloTreeSearchGamer extends SampleGamer
 
 		return endTime - nowTime;
 	}
+
+    @Override
+    public StateMachine getInitialStateMachine() {
+    	if (RuntimeParameters.UNITTEST_PROPNET)
+    	{
+    		return new UnitTestStateMachine(new PropNetStateMachine(), new ProverStateMachine());
+    	}
+
+    	return new CachedStateMachine(new PropNetStateMachine());
+    }
 
 	private static void printParameters()
 	{
