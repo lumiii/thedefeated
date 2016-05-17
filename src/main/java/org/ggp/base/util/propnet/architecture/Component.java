@@ -22,10 +22,12 @@ public abstract class Component implements Serializable
 		input,
 		view,
 		transition,
-		logic,
+		and,
+		or,
+		not,
+		constant,
 		goal,
-		terminal,
-		constant
+		terminal
 	}
 
 	public static class ComponentOrdering implements Comparator<Component>
@@ -322,7 +324,7 @@ public abstract class Component implements Serializable
         }
         else
         {
-        	if (getType() == Type.logic)
+        	if (type == Type.and || type == Type.or || type == Type.not)
         	{
         		thisLabel += this.getClass().getSimpleName();
         	}

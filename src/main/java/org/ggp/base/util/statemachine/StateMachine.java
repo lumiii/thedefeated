@@ -9,6 +9,7 @@ import java.util.Random;
 import java.util.Set;
 
 import org.ggp.base.player.gamer.statemachine.thedefeated.GLog;
+import org.ggp.base.player.gamer.statemachine.thedefeated.Subgame;
 import org.ggp.base.util.gdl.grammar.Gdl;
 import org.ggp.base.util.gdl.grammar.GdlConstant;
 import org.ggp.base.util.gdl.grammar.GdlSentence;
@@ -169,6 +170,15 @@ public abstract class StateMachine
      * game description or the StateMachine implementation.
      */
     public abstract MachineState getNextState(MachineState state, List<Move> moves) throws TransitionDefinitionException;
+
+    public abstract boolean canPlaySubgames();
+    public abstract Set<Subgame> getSubgames();
+    // these can just be overloaded to have the subgame parameter
+    // instead of having new names, but that detracts from the readability of the intentions
+    public abstract int getGoalSub(MachineState state, Role role, Subgame subgame) throws GoalDefinitionException;
+    public abstract boolean isTerminalSub(MachineState state, Subgame subgame);
+    public abstract List<Move> getLegalMovesSub(MachineState state, Role role, Subgame subgame) throws MoveDefinitionException;
+    public abstract MachineState getNextStateSub(MachineState state, List<Move> moves, Subgame subgame) throws TransitionDefinitionException;
 
     // The following methods are included in the abstract StateMachine base so
     // implementations which use alternative Role/Move/State representations

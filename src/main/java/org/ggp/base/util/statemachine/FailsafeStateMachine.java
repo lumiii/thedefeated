@@ -3,6 +3,7 @@ package org.ggp.base.util.statemachine;
 import java.util.List;
 import java.util.Set;
 
+import org.ggp.base.player.gamer.statemachine.thedefeated.Subgame;
 import org.ggp.base.util.gdl.grammar.Gdl;
 import org.ggp.base.util.gdl.grammar.GdlConstant;
 import org.ggp.base.util.gdl.grammar.GdlSentence;
@@ -428,4 +429,42 @@ public class FailsafeStateMachine extends StateMachine
     public StateMachine getBackingMachine() {
         return theBackingMachine;
     }
+
+    // not sure what this class does - leave these as stubs for now
+	@Override
+	public Set<Subgame> getSubgames()
+	{
+		throw new UnsupportedOperationException("Subgame operations not supported!");
+	}
+
+	@Override
+	public int getGoalSub(MachineState state, Role role, Subgame subgame) throws GoalDefinitionException
+	{
+		throw new UnsupportedOperationException("Subgame operations not supported!");
+	}
+
+	@Override
+	public boolean isTerminalSub(MachineState state, Subgame subgame)
+	{
+		throw new UnsupportedOperationException("Subgame operations not supported!");
+	}
+
+	@Override
+	public List<Move> getLegalMovesSub(MachineState state, Role role, Subgame subgame) throws MoveDefinitionException
+	{
+		throw new UnsupportedOperationException("Subgame operations not supported!");
+	}
+
+	@Override
+	public MachineState getNextStateSub(MachineState state, List<Move> moves, Subgame subgame)
+			throws TransitionDefinitionException
+	{
+		throw new UnsupportedOperationException("Subgame operations not supported!");
+	}
+
+	@Override
+	public boolean canPlaySubgames()
+	{
+		return false;
+	}
 }

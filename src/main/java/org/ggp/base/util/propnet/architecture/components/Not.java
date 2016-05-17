@@ -32,7 +32,7 @@ public final class Not extends Component
     @Override
     public Type getType()
     {
-    	return Type.logic;
+    	return Type.not;
     }
 
 	@Override

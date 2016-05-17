@@ -33,7 +33,7 @@ public final class Or extends Component
     @Override
     public Type getType()
     {
-    	return Type.logic;
+    	return Type.or;
     }
 
 	@Override

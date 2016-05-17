@@ -520,4 +520,47 @@ public class PropNetStateMachine extends StateMachine
 
 		return new MachineState(contents);
 	}
+
+	// TODO: Actual work to be done here!
+	@Override
+	public Set<Subgame> getSubgames()
+	{
+		// TODO Auto-generated method stub
+		return null;
+	}
+
+	@Override
+	public int getGoalSub(MachineState state, Role role, Subgame subgame) throws GoalDefinitionException
+	{
+		// TODO Auto-generated method stub
+		return 0;
+	}
+
+	@Override
+	public boolean isTerminalSub(MachineState state, Subgame subgame)
+	{
+		// TODO Auto-generated method stub
+		return false;
+	}
+
+	@Override
+	public List<Move> getLegalMovesSub(MachineState state, Role role, Subgame subgame) throws MoveDefinitionException
+	{
+		// TODO Auto-generated method stub
+		return null;
+	}
+
+	@Override
+	public MachineState getNextStateSub(MachineState state, List<Move> moves, Subgame subgame)
+			throws TransitionDefinitionException
+	{
+		// TODO Auto-generated method stub
+		return null;
+	}
+
+	@Override
+	public boolean canPlaySubgames()
+	{
+		return true;
+	}
 }

@@ -34,7 +34,7 @@ public final class And extends Component
     @Override
     public Type getType()
     {
-    	return Type.logic;
+    	return Type.and;
     }
 
 	@Override

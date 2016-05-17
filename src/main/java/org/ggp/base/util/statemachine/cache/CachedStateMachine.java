@@ -3,7 +3,9 @@ package org.ggp.base.util.statemachine.cache;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
+import org.ggp.base.player.gamer.statemachine.thedefeated.Subgame;
 import org.ggp.base.util.gdl.grammar.Gdl;
 import org.ggp.base.util.statemachine.MachineState;
 import org.ggp.base.util.statemachine.Move;
@@ -157,4 +159,42 @@ public final class CachedStateMachine extends StateMachine
         // TODO(schreib): Should this be cached as well?
         return backingStateMachine.getInitialState();
     }
+
+    // TODO: these all need to be cached! figure out how this class works
+	@Override
+	public Set<Subgame> getSubgames()
+	{
+		return backingStateMachine.getSubgames();
+	}
+
+	@Override
+	public int getGoalSub(MachineState state, Role role, Subgame subgame) throws GoalDefinitionException
+	{
+		return backingStateMachine.getGoalSub(state, role, subgame);
+	}
+
+	@Override
+	public boolean isTerminalSub(MachineState state, Subgame subgame)
+	{
+		return backingStateMachine.isTerminalSub(state, subgame);
+	}
+
+	@Override
+	public List<Move> getLegalMovesSub(MachineState state, Role role, Subgame subgame) throws MoveDefinitionException
+	{
+		return backingStateMachine.getLegalMovesSub(state, role, subgame);
+	}
+
+	@Override
+	public MachineState getNextStateSub(MachineState state, List<Move> moves, Subgame subgame)
+			throws TransitionDefinitionException
+	{
+		return backingStateMachine.getNextStateSub(state, moves, subgame);
+	}
+
+	@Override
+	public boolean canPlaySubgames()
+	{
+		return backingStateMachine.canPlaySubgames();
+	}
 }
