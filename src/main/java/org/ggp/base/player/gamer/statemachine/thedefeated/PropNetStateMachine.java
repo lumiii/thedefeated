@@ -8,6 +8,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Queue;
 import java.util.Set;
+import java.util.Stack;
 import java.util.concurrent.ConcurrentHashMap;
 
 import org.apache.logging.log4j.Logger;
@@ -521,12 +522,142 @@ public class PropNetStateMachine extends StateMachine
 		return new MachineState(contents);
 	}
 
-	// TODO: Actual work to be done here!
 	@Override
 	public Set<Subgame> getSubgames()
 	{
-		// TODO Auto-generated method stub
-		return null;
+
+		Proposition terminalProp = propNet.getTerminalProposition();
+		Stack<Component> tempTerminals = new Stack<>();
+		Set<Component> terminalNodes = new HashSet<>();
+		Set<Component> componentsSeen = new HashSet<>();
+
+		tempTerminals.add(terminalProp);
+
+		boolean negation = false;
+
+		while(!tempTerminals.isEmpty())
+		{
+			Component terminalNode = tempTerminals.pop();
+			componentsSeen.add(terminalNode);
+			Set<Component> inputs = terminalNode.getInputs();
+
+			if(inputs.size() == 1)
+			{
+				Component terminalInput = terminalNode.getSingleInput();
+				if(!negation && terminalInput.getType() == Type.and)
+				{
+					//stop exploring
+					terminalNodes.add(terminalNode);
+					negation = false;
+				}
+				else if(negation && terminalInput.getType() == Type.or)
+				{
+					//stop exploring
+					terminalNodes.add(terminalNode);
+					negation = false;
+				}
+				else
+				{
+					if(terminalInput.getType() == Type.not) negation = !negation;
+					if(!componentsSeen.contains(terminalInput)) tempTerminals.push(terminalInput);
+				}
+			}
+			else
+			{
+				for(Component each : inputs)
+				{
+					tempTerminals.push(each);
+				}
+			}
+		}
+
+		//as a failsafe kind of thing. really shouldn't be necessary (?)
+		if(terminalNodes.size() == 0) {
+			terminalNodes.add(terminalProp);
+		}
+
+		return getSubgamesFromTerminalNodes(terminalNodes);
+	}
+
+	public Set<Subgame> getSubgamesFromTerminalNodes(Set<Component> terminalNodes)
+	{
+		Set<Subgame> subgames = new HashSet<>();
+		Set<Component> seen = new HashSet<>();
+		Stack<Component> toBeTraversed = new Stack<>();
+
+		for(Component eachTerminal : terminalNodes)
+		{
+			toBeTraversed.push(eachTerminal);
+			Set<Proposition> baseProps = new HashSet<>();
+			Set<Proposition> inputProps = new HashSet<>();
+
+			while(!toBeTraversed.isEmpty())
+			{
+				Component comp = toBeTraversed.pop();
+				seen.add(comp);
+				if(comp.getType() == Type.base) baseProps.add((Proposition) comp);
+				if(comp.getType() == Type.input) inputProps.add((Proposition) comp);
+
+				for(Component eachInput : comp.getInputs())
+				{
+					if(!seen.contains(eachInput)) toBeTraversed.push(eachInput);
+				}
+			}
+
+			seen.clear();
+			Subgame subgame = new Subgame(baseProps, inputProps, eachTerminal);
+			subgames.add(subgame);
+		}
+
+		//check to see if subgames are disjoint
+		combineSubgames(subgames);
+
+		return subgames;
+	}
+
+	public void combineSubgames(Set<Subgame> subgames)
+	{
+		int numSubgames = subgames.size();
+		for(Subgame eachSubgame : subgames)
+		{
+			Set<Proposition> baseProps = eachSubgame.getBaseProps();
+			Set<Proposition> inputProps = eachSubgame.getInputProps();
+
+			boolean combined = false;
+
+			for(Subgame otherSubgame : subgames)
+			{
+				if(!otherSubgame.equals(eachSubgame))
+				{
+					Set<Proposition> otherBaseProps = otherSubgame.getBaseProps();
+					Set<Proposition> otherInputProps = otherSubgame.getInputProps();
+
+					for(Proposition baseProp : otherBaseProps)
+					{
+						if(baseProps.contains(baseProp) & !combined)
+						{
+							//here, and 10 lines down: do something with terminal node of the subgame??
+							baseProps.addAll(otherBaseProps);
+							inputProps.addAll(otherInputProps);
+							subgames.remove(otherSubgame);
+							combined = true;
+						}
+					}
+					for(Proposition inputProp : otherInputProps)
+					{
+						if(inputProps.contains(inputProp) && !combined)
+						{
+							baseProps.addAll(otherBaseProps);
+							inputProps.addAll(otherInputProps);
+							subgames.remove(otherSubgame);
+							combined = true;
+						}
+					}
+				}
+
+				combined = false;
+			}
+		}
 	}
 
 	@Override
