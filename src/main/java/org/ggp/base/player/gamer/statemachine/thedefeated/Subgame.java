@@ -1,9 +1,11 @@
 package org.ggp.base.player.gamer.statemachine.thedefeated;
 
+import java.util.HashSet;
 import java.util.Set;
 
 import org.ggp.base.util.propnet.architecture.Component;
 import org.ggp.base.util.propnet.architecture.components.Proposition;
+import org.ggp.base.util.statemachine.Move;
 
 public class Subgame
 {
@@ -29,6 +31,16 @@ public class Subgame
 	public Set<Proposition> getInputProps()
 	{
 		return inputPropositions;
+	}
+
+	public Set<Move> getInputMoves()
+	{
+		Set<Move> moves = new HashSet<Move>();
+		for(Proposition p : inputPropositions)
+		{
+			moves.add(new Move(p.getName().get(1)));
+		}
+		return moves;
 	}
 
 	public Component getTerminalNode()

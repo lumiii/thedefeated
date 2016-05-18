@@ -137,6 +137,7 @@ public class MonteCarloTreeSearchGamer extends SampleGamer
 		StateMachine stateMachine = getStateMachine();
 		Role role = getRole();
 		subs = stateMachine.getSubgames();
+		System.out.println("Found " + subs.size() + " subgames");
 		int minDepth = findMinDepth(stateMachine.getInitialState());
 
 		TreeSearchWorker.globalInit();
@@ -159,17 +160,25 @@ public class MonteCarloTreeSearchGamer extends SampleGamer
 		{
 			MachineState newState = stateMachine.getNextState(initial, m);
 			boolean maxNode = utility.playerHasMoves(newState);
-			Random rand = new Random();
+			boolean found = false;
 			for(Subgame sub : subs)
 			{
-				if(sub.getInputProps().contains(m.get(roleIndex)))
+				Move playerMove = m.get(roleIndex);
+				Set<Move> inputMoves = sub.getInputMoves();
+				if(inputMoves.contains(playerMove))
 				{
 					Node newNode = new Node(root, newState, m, maxNode, sub);
 					root.children.add(newNode);
+					found = true;
 				}
+			}
+			if(!found)
+			{
+				System.out.println("No subgame for move found");
 			}
 		}
 		root.visit=1;
+		root.selected = true;
 
 
 		childStates.put(root.state, root);
@@ -190,7 +199,7 @@ public class MonteCarloTreeSearchGamer extends SampleGamer
 	private int findMinDepth(MachineState currentState) throws MoveDefinitionException, TransitionDefinitionException
 	{
 		StateMachine stateMachine = getStateMachine();
-		int minDepth = 0;
+		int minDepth = 1000;
 		Random rand  = new Random();
 		int numCharges = 10;
 		for(Subgame sub : subs)

@@ -680,8 +680,17 @@ public class PropNetStateMachine extends StateMachine
 		// TODO Auto-generated method stub
 		List<Move> legals = getLegalMoves(state, role);
 		ArrayList<Move> diff = new ArrayList<Move>(legals);
-		diff.removeAll(subgame.getInputProps());
 		ArrayList<Move> intersect = new ArrayList<Move>(legals);
+		if(subgame.getInputProps() == null)
+		{
+			int x =0;
+		}
+		Set<Proposition> inputs = subgame.getInputProps();
+		for(Proposition input : inputs)
+		{
+			diff.remove(getMoveFromProposition(input));
+		}
+
 		intersect.removeAll(diff);
 		return intersect;
 	}
@@ -708,7 +717,12 @@ public class PropNetStateMachine extends StateMachine
 		// TODO Auto-generated method stub
 		List<Move> legals = getLegalMoves(state, role);
 		ArrayList<Move> diff = new ArrayList<Move>(legals);
-		diff.removeAll(subgame.getInputProps());
+		Set<Proposition> inputs = subgame.getInputProps();
+		for(Proposition input : inputs)
+		{
+			diff.remove(getMoveFromProposition(input));
+		}
+
 		return diff;
 	}
 }

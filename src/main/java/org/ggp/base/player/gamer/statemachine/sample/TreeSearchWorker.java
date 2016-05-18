@@ -137,6 +137,8 @@ public class TreeSearchWorker implements Runnable
 				"Stopping thread");
 	}
 
+
+
 	private void treeSearch() throws MoveDefinitionException, TransitionDefinitionException
 	{
 		Node node = select(root);
@@ -159,7 +161,7 @@ public class TreeSearchWorker implements Runnable
 						int depth = 0;
 						Random rand = new Random();
 						MachineState terminalState = node.state;
-						while(!stateMachine.isTerminalSub(terminalState, node.subgame) && depth < minDepth)
+						while(!stateMachine.isTerminalSub(terminalState, node.subgame) && depth <= minDepth)
 						{
 							depth++;
 							List<Move> randMove = new ArrayList<Move>();
@@ -323,11 +325,25 @@ public class TreeSearchWorker implements Runnable
 
 	private void expand(Node node) throws MoveDefinitionException, TransitionDefinitionException
 	{
-		List<List<Move>> moves = utility.findAllMoves(node.state, node.subgame);
+		List<List<Move>> moves;
+		if(node.subgame!=null)
+		{
+			moves = utility.findAllMoves(node.state, node.subgame);
+		}
+		else
+		{
+			moves = new ArrayList<List<Move>>();
+		}
+
 		for (List<Move> m : moves)
 		{
 			MachineState newState = stateMachine.getNextStateSub(node.state, m, node.subgame);
 			boolean maxNode = utility.playerHasMoves(newState);
+			if(node.subgame == null)
+			{
+				int x =0;
+				System.out.println(x);
+			}
 				Node newNode = new Node(node, newState, m, maxNode, node.subgame);
 				node.children.add(newNode);
 

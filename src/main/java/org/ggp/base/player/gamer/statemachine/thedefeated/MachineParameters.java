@@ -4,7 +4,7 @@ import java.util.Date;
 
 public class MachineParameters
 {
-	public static final int NUM_CORES = 4;
+	public static final int NUM_CORES = 1;
 	public static final int META_TIME_PAD = 1000;
 
 	public static final int MAIN_THREAD_PRIORITY = Thread.MAX_PRIORITY;
