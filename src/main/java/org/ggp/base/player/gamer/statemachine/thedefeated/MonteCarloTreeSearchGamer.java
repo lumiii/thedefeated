@@ -31,8 +31,7 @@ public class MonteCarloTreeSearchGamer extends SampleGamer
 	private static final Logger log = GLog.getLogger(MonteCarloTreeSearchGamer.class);
 	private long endTime = 0;
 
-	private Thread[] threads = new Thread[MachineParameters.NUM_CORES];
-	private TreeSearchWorker[] workers = new TreeSearchWorker[MachineParameters.NUM_CORES];
+	private ThreadManager threadManager = new ThreadManager(MachineParameters.NUM_CORES);
 	private Map<MachineState, Node> childStates = new HashMap<>();
 	private Node root = null;
 	private GameUtilities utility = null;
@@ -82,11 +81,6 @@ public class MonteCarloTreeSearchGamer extends SampleGamer
 	public MonteCarloTreeSearchGamer()
 	{
 		Thread.currentThread().setPriority(MachineParameters.MAIN_THREAD_PRIORITY);
-		for (int i = 0; i < workers.length; i++)
-		{
-			workers[i] = new TreeSearchWorker(i);
-			threads[i] = new Thread(workers[i]);
-		}
 
 		lock = new Object();
 	}
@@ -117,7 +111,7 @@ public class MonteCarloTreeSearchGamer extends SampleGamer
 		timer.purge();
 		timer = null;
 
-		stopWorkers();
+		threadManager.stopWorkers();
 		root = null;
 		childStates.clear();
 
@@ -140,12 +134,7 @@ public class MonteCarloTreeSearchGamer extends SampleGamer
 		System.out.println("Found " + subs.size() + " subgames");
 		int minDepth = findMinDepth(stateMachine.getInitialState());
 
-		TreeSearchWorker.globalInit();
-
-		for (int i = 0; i < workers.length; i++)
-		{
-			workers[i].init(stateMachine, role);
-		}
+		threadManager.initializeWorkers(stateMachine, role);
 
 		utility = new GameUtilities(stateMachine, role);
 
@@ -184,11 +173,8 @@ public class MonteCarloTreeSearchGamer extends SampleGamer
 
 		childStates.put(root.state(), root);
 
-		updateWorkers(root, minDepth);
-
-
-
-		startWorkers();
+		threadManager.updateWorkers(root, minDepth);
+		threadManager.startWorkers();
 
 		waitForTimeout();
 
@@ -254,7 +240,7 @@ public class MonteCarloTreeSearchGamer extends SampleGamer
 
 		updateRoot(currentState);
 
-		updateWorkers(root, findMinDepth(getCurrentState()));
+		threadManager.updateWorkers(root, findMinDepth(getCurrentState()));
 
 		for (Node child : root.children())
 		{
@@ -288,25 +274,6 @@ public class MonteCarloTreeSearchGamer extends SampleGamer
 		TreeSearchWorker.printStats();
 
 		return bestMove;
-	}
-
-	private void startWorkers()
-	{
-		for (int i = 0; i < workers.length; i++)
-		{
-			threads[i].setName("TreeSearchWorker-" + i);
-			threads[i].setPriority(MachineParameters.WORKER_THREAD_PRIORITY);
-			threads[i].start();
-		}
-	}
-
-	private void stopWorkers()
-	{
-		for (int i = 0; i < workers.length; i++)
-		{
-			threads[i].interrupt();
-			threads[i] = new Thread(workers[i]);
-		}
 	}
 
 	private void waitForTimeout()
@@ -416,6 +383,10 @@ public class MonteCarloTreeSearchGamer extends SampleGamer
 		if (root == null)
 		{
 			root = NodePool.newNode(null, currentState, null, true, null);
+			if (root == null)
+			{
+				throw new IllegalStateException("No memory can be obtained for even one node");
+			}
 		}
 		else
 		{
@@ -434,15 +405,6 @@ public class MonteCarloTreeSearchGamer extends SampleGamer
 			}
 
 			childStates.clear();
-		}
-	}
-
-	private void updateWorkers(Node root, int minDepth) throws MoveDefinitionException, TransitionDefinitionException
-	{
-		for (int i = 0; i < workers.length; i++)
-		{
-			workers[i].setRoot(root);
-			workers[i].setMinDepth(minDepth);
 		}
 	}
 

@@ -8,6 +8,7 @@ import org.apache.logging.log4j.Logger;
 import org.ggp.base.player.gamer.statemachine.thedefeated.GLog;
 import org.ggp.base.player.gamer.statemachine.thedefeated.GameUtilities;
 import org.ggp.base.player.gamer.statemachine.thedefeated.RuntimeParameters;
+import org.ggp.base.player.gamer.statemachine.thedefeated.ThreadManager;
 import org.ggp.base.player.gamer.statemachine.thedefeated.node.Node;
 import org.ggp.base.player.gamer.statemachine.thedefeated.node.NodePool;
 import org.ggp.base.util.statemachine.MachineState;
@@ -35,6 +36,7 @@ public class TreeSearchWorker implements Runnable
 	private volatile static int terminalNodeVisited = 0;
 
 	private int id;
+	private ThreadManager manager;
 
 	private StateMachine stateMachine;
 
@@ -45,9 +47,10 @@ public class TreeSearchWorker implements Runnable
 
 	private GameUtilities utility;
 	private int minDepth;
-	public TreeSearchWorker(int id)
+	public TreeSearchWorker(int id, ThreadManager manager)
 	{
 		this.id = id;
+		this.manager = manager;
 	}
 
 
@@ -104,7 +107,9 @@ public class TreeSearchWorker implements Runnable
 	{
 		if (this.root != this.newRoot)
 		{
+			manager.updateReference(this.root, this.newRoot);
 			this.root = this.newRoot;
+			this.newRoot = null;
 			log.info(GLog.THREAD_ACTIVITY,
 					"Thread active");
 		}
@@ -344,6 +349,14 @@ public class TreeSearchWorker implements Runnable
 			}
 
 			Node newNode = NodePool.newNode(node, newState, m, maxNode, node.subgame());
+
+			// just do an early return because there's no possible way for us to get
+			// more memory out of this - hopefully some will be freed up next time
+			if (newNode == null)
+			{
+				return;
+			}
+
 			node.children().add(newNode);
 		}
 	}
