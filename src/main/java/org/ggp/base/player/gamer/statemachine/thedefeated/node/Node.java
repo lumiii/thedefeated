@@ -26,9 +26,9 @@ public class Node
 	private List<Move> move;
 	private Subgame subgame;
 
-	protected Node(Node par, MachineState stat, List<Move> m, boolean playerHasChoice, Subgame sub)
+	protected Node()
 	{
-		set(par, stat, m, playerHasChoice, sub);
+		children = new ConcurrentLinkedQueue<Node>();
 	}
 
 	protected void set(Node par, MachineState stat, List<Move> m, boolean playerHasChoice, Subgame sub)
@@ -38,7 +38,7 @@ public class Node
 		maxNode = playerHasChoice || !RuntimeParameters.MINIMAX;
 		selected = false;
 		parent = par;
-		children = new ConcurrentLinkedQueue<Node>();
+		children.clear();
 		state = stat;
 		move = m;
 		subgame = sub;
