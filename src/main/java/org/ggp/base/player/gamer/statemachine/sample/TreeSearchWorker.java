@@ -7,8 +7,9 @@ import java.util.Random;
 import org.apache.logging.log4j.Logger;
 import org.ggp.base.player.gamer.statemachine.thedefeated.GLog;
 import org.ggp.base.player.gamer.statemachine.thedefeated.GameUtilities;
-import org.ggp.base.player.gamer.statemachine.thedefeated.Node;
 import org.ggp.base.player.gamer.statemachine.thedefeated.RuntimeParameters;
+import org.ggp.base.player.gamer.statemachine.thedefeated.node.Node;
+import org.ggp.base.player.gamer.statemachine.thedefeated.node.NodePool;
 import org.ggp.base.util.statemachine.MachineState;
 import org.ggp.base.util.statemachine.Move;
 import org.ggp.base.util.statemachine.Role;
@@ -22,10 +23,10 @@ public class TreeSearchWorker implements Runnable
 {
 	private static final Logger log = GLog.getLogger(TreeSearchWorker.class);
 
-	private static final int WIN_SCORE = 100;
-	private static final int LOSE_SCORE = 0;
-	private static final int MAX_VISITS = Integer.MAX_VALUE / 2;
-	private static final int MIN_VISITS = 1;
+	public static final int WIN_SCORE = 100;
+	public static final int LOSE_SCORE = 0;
+	public static final int MAX_VISITS = Integer.MAX_VALUE / 2;
+	public static final int MIN_VISITS = 1;
 
 	private static final int FULL_TREE_WARNING_THRESHOLD = 10;
 
@@ -147,7 +148,7 @@ public class TreeSearchWorker implements Runnable
 		{
 			nodesVisited++;
 
-			if (!stateMachine.isTerminalSub(node.state, node.subgame))
+			if (!stateMachine.isTerminalSub(node.state(), node.subgame()))
 			{
 				expand(node);
 
@@ -160,24 +161,24 @@ public class TreeSearchWorker implements Runnable
 					{
 						int depth = 0;
 						Random rand = new Random();
-						MachineState terminalState = node.state;
-						while(!stateMachine.isTerminalSub(terminalState, node.subgame) && depth <= minDepth)
+						MachineState terminalState = node.state();
+						while(!stateMachine.isTerminalSub(terminalState, node.subgame()) && depth <= minDepth)
 						{
 							depth++;
 							List<Move> randMove = new ArrayList<Move>();
 							for(Role r : stateMachine.getRoles())
 							{
-								List<Move> moves = stateMachine.getLegalMovesSub(terminalState, r, node.subgame);
+								List<Move> moves = stateMachine.getLegalMovesSub(terminalState, r, node.subgame());
 								Move m = moves.get(rand.nextInt(moves.size()));
 								randMove.add(m);
 
 							}
-							terminalState = stateMachine.getNextStateSub(terminalState, randMove, node.subgame);
+							terminalState = stateMachine.getNextStateSub(terminalState, randMove, node.subgame());
 
 						}
-						if(stateMachine.isTerminalSub(terminalState, node.subgame))
+						if(stateMachine.isTerminalSub(terminalState, node.subgame()))
 						{
-							totalScore += stateMachine.getGoalSub(terminalState, playerRole, node.subgame);
+							totalScore += stateMachine.getGoalSub(terminalState, playerRole, node.subgame());
 						}
 						else
 						{
@@ -199,34 +200,30 @@ public class TreeSearchWorker implements Runnable
 			{
 				try
 				{
-					int score = stateMachine.getGoalSub(node.state, playerRole, node.subgame);
+					int score = stateMachine.getGoalSub(node.state(), playerRole, node.subgame());
 
 					terminalNodeVisited++;
 
 					if (score <= LOSE_SCORE)
 					{
-						Node parent = node.parent;
-						if (!parent.maxNode)
+						Node parent = node.parent();
+						if (!parent.isMaxNode())
 						{
 							log.debug(GLog.TREE_SEARCH,
 								"Found min terminal node");
 
-							parent.utility = LOSE_SCORE;
-							parent.visit = MAX_VISITS;
-							parent.locked = true;
+							parent.lockToMin();
 						}
 					}
 					else if (score >= WIN_SCORE)
 					{
-						Node parent = node.parent;
-						if (parent.maxNode)
+						Node parent = node.parent();
+						if (parent.isMaxNode())
 						{
 							log.debug(GLog.TREE_SEARCH,
 								"Found max terminal node");
 
-							parent.utility = WIN_SCORE;
-							parent.visit = MIN_VISITS;
-							parent.locked = true;
+							parent.lockToMax();
 						}
 					}
 
@@ -259,9 +256,9 @@ public class TreeSearchWorker implements Runnable
 
 			synchronized (currentNode)
 			{
-				if (!currentNode.selected)
+				if (!currentNode.isSelected())
 				{
-					currentNode.selected = true;
+					currentNode.select();
 
 					log.info(GLog.TREE_SEARCH,
 							"Searched depth " + depth);
@@ -270,13 +267,13 @@ public class TreeSearchWorker implements Runnable
 				}
 			}
 
-			for (Node child : currentNode.children)
+			for (Node child : currentNode.children())
 			{
 				synchronized (child)
 				{
-					if (!child.selected)
+					if (!child.isSelected())
 					{
-						child.selected = true;
+						child.select();
 						log.info(GLog.TREE_SEARCH,
 								"Searched depth " + depth);
 
@@ -286,24 +283,24 @@ public class TreeSearchWorker implements Runnable
 			}
 
 			Node result = null;
-			if (!currentNode.children.isEmpty())
+			if (!currentNode.children().isEmpty())
 			{
 				// if it's a max node, start with the minimum value and look up
 				// otherwise, start with the max value and look down
-				double score = currentNode.maxNode ? 0 : Double.MAX_VALUE;
+				double score = currentNode.isMaxNode() ? 0 : Double.MAX_VALUE;
 
-				for (Node child : currentNode.children)
+				for (Node child : currentNode.children())
 				{
 					double newScore = selectFn(child);
 
 					// use the highest score if it's a max node
-					if (currentNode.maxNode && newScore > score)
+					if (currentNode.isMaxNode() && newScore > score)
 					{
 						score = newScore;
 						result = child;
 					}
 					// use the lowest score if it's a min node
-					else if (!currentNode.maxNode && newScore < score)
+					else if (!currentNode.isMaxNode() && newScore < score)
 					{
 						score = newScore;
 						result = child;
@@ -326,9 +323,9 @@ public class TreeSearchWorker implements Runnable
 	private void expand(Node node) throws MoveDefinitionException, TransitionDefinitionException
 	{
 		List<List<Move>> moves;
-		if(node.subgame!=null)
+		if(node.subgame() != null)
 		{
-			moves = utility.findAllMoves(node.state, node.subgame);
+			moves = utility.findAllMoves(node.state(), node.subgame());
 		}
 		else
 		{
@@ -337,16 +334,17 @@ public class TreeSearchWorker implements Runnable
 
 		for (List<Move> m : moves)
 		{
-			MachineState newState = stateMachine.getNextStateSub(node.state, m, node.subgame);
+			MachineState newState = stateMachine.getNextStateSub(node.state(), m, node.subgame());
 			boolean maxNode = utility.playerHasMoves(newState);
-			if(node.subgame == null)
+
+			if(node.subgame() == null)
 			{
 				int x =0;
 				System.out.println(x);
 			}
-				Node newNode = new Node(node, newState, m, maxNode, node.subgame);
-				node.children.add(newNode);
 
+			Node newNode = NodePool.newNode(node, newState, m, maxNode, node.subgame());
+			node.children().add(newNode);
 		}
 	}
 
@@ -360,15 +358,15 @@ public class TreeSearchWorker implements Runnable
 
 			synchronized (currentNode)
 			{
-				if (!currentNode.locked)
+				if (!currentNode.isLocked())
 				{
-					currentNode.visit += visits;
-					currentNode.utility += totalScore;
+					currentNode.visitIncrement(visits);
+					currentNode.utilityIncrement(totalScore);
 				}
 			}
 
 			nodesUpdated += visits;
-			currentNode = currentNode.parent;
+			currentNode = currentNode.parent();
 		}
 
 		log.info(GLog.TREE_SEARCH,
@@ -379,20 +377,20 @@ public class TreeSearchWorker implements Runnable
 	{
 		synchronized (node)
 		{
-			if (node.visit == 0)
+			if (node.visit() == 0)
 			{
 				return 0;
 			}
 
 			int parentVisit = 0;
 
-			if (node.parent != null)
+			if (node.parent() != null)
 			{
-				parentVisit = node.parent.visit;
+				parentVisit = node.parent().visit();
 			}
 
-			return (node.utility / node.visit
-					+ RuntimeParameters.EXPLORATION_FACTOR * Math.sqrt(2 * Math.log(parentVisit) / node.visit));
+			return (node.utility() / node.visit()
+					+ RuntimeParameters.EXPLORATION_FACTOR * Math.sqrt(2 * Math.log(parentVisit) / node.visit()));
 		}
 	}
 }

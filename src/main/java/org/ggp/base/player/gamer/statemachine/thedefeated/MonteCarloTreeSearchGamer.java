@@ -14,6 +14,8 @@ import java.util.TimerTask;
 import org.apache.logging.log4j.Logger;
 import org.ggp.base.player.gamer.statemachine.sample.SampleGamer;
 import org.ggp.base.player.gamer.statemachine.sample.TreeSearchWorker;
+import org.ggp.base.player.gamer.statemachine.thedefeated.node.Node;
+import org.ggp.base.player.gamer.statemachine.thedefeated.node.NodePool;
 import org.ggp.base.util.statemachine.MachineState;
 import org.ggp.base.util.statemachine.Move;
 import org.ggp.base.util.statemachine.Role;
@@ -126,8 +128,6 @@ public class MonteCarloTreeSearchGamer extends SampleGamer
 	public void stateMachineMetaGame(long timeout)
 			throws TransitionDefinitionException, MoveDefinitionException, GoalDefinitionException
 	{
-
-
 		log.info(GLog.MAIN_THREAD_ACTIVITY,
 				GLog.BANNER + " Beginning meta game " + GLog.BANNER);
 		setMetaTimeout(timeout);
@@ -167,21 +167,22 @@ public class MonteCarloTreeSearchGamer extends SampleGamer
 				Set<Move> inputMoves = sub.getInputMoves();
 				if(inputMoves.contains(playerMove))
 				{
-					Node newNode = new Node(root, newState, m, maxNode, sub);
-					root.children.add(newNode);
+					Node newNode = NodePool.newNode(root, newState, m, maxNode, sub);
+					root.children().add(newNode);
 					found = true;
 				}
 			}
+
 			if(!found)
 			{
 				System.out.println("No subgame for move found");
 			}
 		}
-		root.visit=1;
-		root.selected = true;
 
+		root.visitIncrement(1);
+		root.select();
 
-		childStates.put(root.state, root);
+		childStates.put(root.state(), root);
 
 		updateWorkers(root, minDepth);
 
@@ -255,9 +256,9 @@ public class MonteCarloTreeSearchGamer extends SampleGamer
 
 		updateWorkers(root, findMinDepth(getCurrentState()));
 
-		for (Node child : root.children)
+		for (Node child : root.children())
 		{
-			childStates.put(child.state, child);
+			childStates.put(child.state(), child);
 		}
 
 		waitForTimeout();
@@ -349,12 +350,12 @@ public class MonteCarloTreeSearchGamer extends SampleGamer
 
 		boolean opponentHasMoves = utility.opponentHasMoves(currentState);
 
-		for (Node child : root.children)
+		for (Node child : root.children())
 		{
-			Move m = child.move.get(roleIndex);
+			Move m = child.move().get(roleIndex);
 
 			// see if we can find an immediate winning move
-			if (!opponentHasMoves && utility.isWinningState(child.state))
+			if (!opponentHasMoves && utility.isWinningState(child.state()))
 			{
 				log.info(GLog.MOVE_EVALUATION,
 						"Performing winning move");
@@ -365,13 +366,13 @@ public class MonteCarloTreeSearchGamer extends SampleGamer
 			}
 
 			int score;
-			if (child.visit == 0)
+			if (child.visit() == 0)
 			{
 				score = 0;
 			}
 			else
 			{
-				score = child.utility / child.visit;
+				score = child.utility() / child.visit();
 			}
 
 			moveScore.put(m, moveScore.get(m) + score);
@@ -414,7 +415,7 @@ public class MonteCarloTreeSearchGamer extends SampleGamer
 	{
 		if (root == null)
 		{
-			root = new Node(null, currentState, null, true, null);
+			root = NodePool.newNode(null, currentState, null, true, null);
 		}
 		else
 		{
@@ -423,11 +424,12 @@ public class MonteCarloTreeSearchGamer extends SampleGamer
 			if (childNode != null)
 			{
 				root = childNode;
-				root.parent = null;
+				root.orphan();
 			}
 			else
 			{
-				root = new Node(null, currentState, null, true, null);
+				root.orphan();
+				root = NodePool.newNode(null, currentState, null, true, null);
 				log.error(GLog.ERRORS, "Missed finding the tree - investigate");
 			}
 
