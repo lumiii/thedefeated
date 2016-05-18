@@ -2,6 +2,7 @@ package org.ggp.base.player.gamer.statemachine.thedefeated;
 
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedList;
 import java.util.List;
@@ -617,45 +618,48 @@ public class PropNetStateMachine extends StateMachine
 
 	public void combineSubgames(Set<Subgame> subgames)
 	{
-		int numSubgames = subgames.size();
+		Map<Proposition, List<Subgame>> allProps = new HashMap<>();
+
 		for(Subgame eachSubgame : subgames)
 		{
-			Set<Proposition> baseProps = eachSubgame.getBaseProps();
-			Set<Proposition> inputProps = eachSubgame.getInputProps();
+			Set<Proposition> subgameProps = eachSubgame.getBaseProps();
+			subgameProps.addAll(eachSubgame.getInputProps());
 
-			boolean combined = false;
-
-			for(Subgame otherSubgame : subgames)
+			for(Proposition eachProp : subgameProps)
 			{
-				if(!otherSubgame.equals(eachSubgame))
+				if(allProps.containsKey(eachProp))
 				{
-					Set<Proposition> otherBaseProps = otherSubgame.getBaseProps();
-					Set<Proposition> otherInputProps = otherSubgame.getInputProps();
+					allProps.get(eachProp).add(eachSubgame);
+				}
+				else
+				{
+					List<Subgame> assocSubgames = new ArrayList<>();
+					assocSubgames.add(eachSubgame);
+					allProps.put(eachProp, assocSubgames);
+				}
+			}
+		}
 
-					for(Proposition baseProp : otherBaseProps)
-					{
-						if(baseProps.contains(baseProp) & !combined)
-						{
-							//here, and 10 lines down: do something with terminal node of the subgame??
-							baseProps.addAll(otherBaseProps);
-							inputProps.addAll(otherInputProps);
-							subgames.remove(otherSubgame);
-							combined = true;
-						}
-					}
-					for(Proposition inputProp : otherInputProps)
-					{
-						if(inputProps.contains(inputProp) && !combined)
-						{
-							baseProps.addAll(otherBaseProps);
-							inputProps.addAll(otherInputProps);
-							subgames.remove(otherSubgame);
-							combined = true;
-						}
-					}
+		for(Proposition eachProp : allProps.keySet())
+		{
+			List<Subgame> assocSubgames = allProps.get(eachProp);
+			int numAssocSubgames = assocSubgames.size();
+
+			if(numAssocSubgames > 1)
+			{
+				Subgame sgzero = assocSubgames.get(0);
+				Set<Proposition> sgzeroBases = sgzero.getBaseProps();
+				Set<Proposition> sgzeroInputs = sgzero.getInputProps();
+
+				for(int i = 1; i < numAssocSubgames; i++)
+				{
+					Subgame currentSG = assocSubgames.get(i);
+					sgzeroBases.addAll(currentSG.getBaseProps());
+					sgzeroInputs.addAll(currentSG.getInputProps());
 				}
 
-				combined = false;
+				subgames.removeAll(assocSubgames);
+				subgames.add(sgzero);
 			}
 		}
 	}
