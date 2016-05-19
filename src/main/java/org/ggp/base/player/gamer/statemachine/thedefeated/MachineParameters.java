@@ -15,7 +15,7 @@ public class MachineParameters
 	// amount of time to buffer before the timeout
 	public static final long TIME_BUFFER = 2000;
 
-	private static final String OUTPUT_FILE = "D:\\227b\\graph";
+	private static final String OUTPUT_FILE = "C:\\Users\\Alexander\\Documents\\CS 227B Stuff\\graph";
 	private static final String OUTPUT_FILE_EXTENSION = ".dot";
 
 	public static String outputFilename()

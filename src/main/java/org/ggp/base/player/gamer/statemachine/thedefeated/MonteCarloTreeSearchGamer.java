@@ -141,37 +141,11 @@ public class MonteCarloTreeSearchGamer extends SampleGamer
 		childStates.clear();
 
 		updateRoot(getCurrentState());
-
-		MachineState initial = stateMachine.getInitialState();
-		List<List<Move>> moves = utility.findAllMoves(initial);
-		int roleIndex = stateMachine.getRoleIndices().get(role);
-		for (List<Move> m : moves)
-		{
-			MachineState newState = stateMachine.getNextState(initial, m);
-			boolean maxNode = utility.playerHasMoves(newState);
-			boolean found = false;
-			for(Subgame sub : subs)
-			{
-				Move playerMove = m.get(roleIndex);
-				Set<Move> inputMoves = sub.getInputMoves();
-				if(inputMoves.contains(playerMove))
-				{
-					Node newNode = NodePool.newNode(root, newState, m, maxNode, sub);
-					root.children().add(newNode);
-					found = true;
-				}
-			}
-
-			if(!found)
-			{
-				System.out.println("No subgame for move found");
-			}
-		}
-
-		root.visitIncrement(1);
-		root.select();
-
+		boolean expandOurMove=false;
+		MachineState state = stateMachine.getInitialState();
+		expandWithSubgame(root, state);
 		childStates.put(root.state(), root);
+
 
 		threadManager.updateWorkers(root, minDepth);
 		threadManager.startWorkers();
@@ -183,6 +157,52 @@ public class MonteCarloTreeSearchGamer extends SampleGamer
 				GLog.BANNER + " Ending meta game " + GLog.BANNER);
 	}
 
+
+	private void expandWithSubgame(Node node, MachineState state) throws TransitionDefinitionException, MoveDefinitionException
+	{
+		StateMachine stateMachine = getStateMachine();
+		Role role = getRole();
+		List<List<Move>> moves = utility.findAllMoves(state);
+		int roleIndex = stateMachine.getRoleIndices().get(role);
+		for (List<Move> m : moves)
+		{
+			MachineState newState = stateMachine.getNextState(state, m);
+			boolean maxNode = utility.playerHasMoves(newState);
+			boolean found = false;
+			for(Subgame sub : subs)
+			{
+				Move playerMove = m.get(roleIndex);
+				Set<Move> inputMoves = sub.getInputMoves();
+				if(inputMoves.contains(playerMove))
+				{
+					Node newNode = NodePool.newNode(node, newState, m, maxNode, sub);
+					node.children().add(newNode);
+					found = true;
+					System.out.println("Subgame found");
+				}
+			}
+
+			if(!found)
+			{
+				System.out.println("No subgame for move found");
+			}
+		}
+
+		node.visitIncrement(1);
+		node.select();
+		if(node.children().isEmpty())
+		{
+			for(List<Move> m : moves)
+			{
+				MachineState newState = stateMachine.getNextState(state, m);
+				boolean maxNode = utility.playerHasMoves(newState);
+				Node newNode = NodePool.newNode(node, newState, m, maxNode, null);
+				node.children().add(newNode);
+
+				expandWithSubgame(newNode,newState);
+			}
+		}
+	}
 	private int findMinDepth(MachineState currentState) throws MoveDefinitionException, TransitionDefinitionException
 	{
 		StateMachine stateMachine = getStateMachine();
@@ -307,13 +327,17 @@ public class MonteCarloTreeSearchGamer extends SampleGamer
 	{
 		Map<Move, Integer> moveScore = new HashMap<Move, Integer>();
 		Map<Move, Integer> moveCount = new HashMap<Move, Integer>();
-		for (Move m : moves)
+		int roleIndex = utility.getPlayerRoleIndex();
+
+		for (Node child : root.children())
 		{
+			Move m = child.move().get(roleIndex);
+
 			moveScore.put(m, 0);
 			moveCount.put(m, 0);
 		}
 
-		int roleIndex = utility.getPlayerRoleIndex();
+
 
 		boolean opponentHasMoves = utility.opponentHasMoves(currentState);
 
@@ -378,7 +402,7 @@ public class MonteCarloTreeSearchGamer extends SampleGamer
 		return bestMove;
 	}
 
-	private void updateRoot(MachineState currentState)
+	private void updateRoot(MachineState currentState) throws MoveDefinitionException, TransitionDefinitionException
 	{
 		if (root == null)
 		{
@@ -402,6 +426,39 @@ public class MonteCarloTreeSearchGamer extends SampleGamer
 				root.orphan();
 				root = NodePool.newNode(null, currentState, null, true, null);
 				log.error(GLog.ERRORS, "Missed finding the tree - investigate");
+
+
+				StateMachine stateMachine = getStateMachine();
+				Role role = getRole();
+				MachineState initial = stateMachine.getInitialState();
+				List<List<Move>> moves = utility.findAllMoves(initial);
+				int roleIndex = stateMachine.getRoleIndices().get(role);
+				for (List<Move> m : moves)
+				{
+					MachineState newState = stateMachine.getNextState(initial, m);
+					boolean maxNode = utility.playerHasMoves(newState);
+					boolean found = false;
+					for(Subgame sub : subs)
+					{
+						Move playerMove = m.get(roleIndex);
+						Set<Move> inputMoves = sub.getInputMoves();
+						if(inputMoves.contains(playerMove))
+						{
+							Node newNode = NodePool.newNode(root, newState, m, maxNode, sub);
+							root.children().add(newNode);
+							found = true;
+						}
+					}
+
+					if(!found)
+					{
+						System.out.println("No subgame for move found");
+					}
+				}
+
+				root.visitIncrement(1);
+				root.select();
+
 			}
 
 			childStates.clear();

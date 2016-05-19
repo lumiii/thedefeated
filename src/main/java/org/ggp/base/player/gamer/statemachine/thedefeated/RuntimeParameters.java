@@ -18,7 +18,7 @@ public class RuntimeParameters
 	public static final boolean LOG_PROPNET = true;
 
 	public static final boolean UNITTEST_PROPNET = false;
-	public static final boolean OUTPUT_GRAPH_FILE = true;
+	public static final boolean OUTPUT_GRAPH_FILE = false;
 	// this value must be true if output_graph_file is true, otherwise
 	// render will fail
 	public static final boolean GRAPH_TOSTRING = false || OUTPUT_GRAPH_FILE;

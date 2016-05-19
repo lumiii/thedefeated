@@ -56,20 +56,20 @@ public class PropNetStateMachine extends StateMachine
 		try
 		{
 			log.info(GLog.PROPNET,
-				"Initializing prop net");
+					"Initializing prop net");
 
 			propNet = OptimizingPropNetFactory.create(description);
 
 			populateStartingComponents();
 
 			log.info(GLog.PROPNET,
-				"Size: " + propNet.getComponents().size());
+					"Size: " + propNet.getComponents().size());
 
 			if (RuntimeParameters.OUTPUT_GRAPH_FILE)
 			{
 				String filePath = MachineParameters.outputFilename();
 				log.info(GLog.PROPNET,
-					"Logging graph output to:\n" + filePath);
+						"Logging graph output to:\n" + filePath);
 
 				propNet.renderToFile(filePath);
 			}
@@ -149,36 +149,36 @@ public class PropNetStateMachine extends StateMachine
 		}
 	}
 
-    private void propagateMoves()
-    {
-    	Queue<Component> queue = new LinkedList<Component>();
+	private void propagateMoves()
+	{
+		Queue<Component> queue = new LinkedList<Component>();
 
-    	queue.addAll(propNet.getBasePropositions().values());
-    	queue.addAll(startingComponents);
+		queue.addAll(propNet.getBasePropositions().values());
+		queue.addAll(startingComponents);
 
-    	while(!queue.isEmpty())
-    	{
-    		Component node = queue.poll();
+		while(!queue.isEmpty())
+		{
+			Component node = queue.poll();
 
-    		boolean updateChildren = node.shouldPropagate();
+			boolean updateChildren = node.shouldPropagate();
 
-    		if (updateChildren)
-    		{
-    			boolean value = node.getValue();
+			if (updateChildren)
+			{
+				boolean value = node.getValue();
 
-    			for (Component child : node.getOutputs())
-    			{
-    				markComponent(child, value, !node.hasPropagatedOnce());
+				for (Component child : node.getOutputs())
+				{
+					markComponent(child, value, !node.hasPropagatedOnce());
 
-    				if (child.getType() != Type.base)
-    				{
-    					queue.add(child);
-    				}
-    			}
+					if (child.getType() != Type.base)
+					{
+						queue.add(child);
+					}
+				}
 
-    			node.setPropagated();
-    		}
-    	}
+				node.setPropagated();
+			}
+		}
 
 		// this is required because we could have marked a base prop to be a different value than it was
 		// but its parent transition may not necessarily propagate a new value to the base prop
@@ -194,11 +194,11 @@ public class PropNetStateMachine extends StateMachine
 				markComponent(p, transitionValue, false);
 			}
 		}
-    }
+	}
 
-    private void markComponent(Component component, boolean value, boolean firstPropagation)
-    {
-    	component.setValueFromParent(value, firstPropagation);
+	private void markComponent(Component component, boolean value, boolean firstPropagation)
+	{
+		component.setValueFromParent(value, firstPropagation);
 
 		if (component.getType() == Type.base)
 		{
@@ -236,7 +236,7 @@ public class PropNetStateMachine extends StateMachine
 				}
 			}
 		}
-    }
+	}
 
 	/**
 	 * Computes if the state is terminal. Should return the value of the
@@ -341,18 +341,18 @@ public class PropNetStateMachine extends StateMachine
 		{
 			propagateMoves(state.getContents());
 
-	    	Map<Role, Set<Proposition>> legals = propNet.getLegalPropositions();
+			Map<Role, Set<Proposition>> legals = propNet.getLegalPropositions();
 
-	    	List<Move> m = new ArrayList<Move>();
-	        for(Proposition p : legals.get(role))
-	        {
-	        	if (p.getValue())
-	        	{
-	        		m.add(getMoveFromProposition(p));
-	        	}
-	        }
+			List<Move> m = new ArrayList<Move>();
+			for(Proposition p : legals.get(role))
+			{
+				if (p.getValue())
+				{
+					m.add(getMoveFromProposition(p));
+				}
+			}
 
-	        return m;
+			return m;
 		}
 	}
 
@@ -380,17 +380,17 @@ public class PropNetStateMachine extends StateMachine
 			inputSentences = Collections.emptySet();
 		}
 
-    	markInputProps(inputSentences);
+		markInputProps(inputSentences);
 
-    	if (additionalProps != null)
-    	{
-	    	for (Proposition p : additionalProps)
-	    	{
-	    		p.markValue(true);
-	    	}
-    	}
+		if (additionalProps != null)
+		{
+			for (Proposition p : additionalProps)
+			{
+				p.markValue(true);
+			}
+		}
 
-    	propagateMoves();
+		propagateMoves();
 	}
 
 	private MachineState getNextState(
@@ -407,7 +407,7 @@ public class PropNetStateMachine extends StateMachine
 	{
 		propagateMoves(baseSentences, inputSentences, additionalProps);
 
-        return getStateFromCachedBase();
+		return getStateFromCachedBase();
 	}
 
 
@@ -640,8 +640,65 @@ public class PropNetStateMachine extends StateMachine
 			}
 		}
 
-		for(Proposition eachProp : allProps.keySet())
+		Set<Subgame> newSubgames = new HashSet<>();
+
+		while(!allProps.isEmpty())
 		{
+			Set<Proposition> visited = new HashSet<>();
+			Set<Proposition> unvisited = new HashSet<>();
+
+
+			Component terminalNode = null;
+
+			unvisited.add(allProps.keySet().iterator().next());
+			while(!unvisited.isEmpty())
+			{
+				Proposition key = unvisited.iterator().next();
+				List<Subgame> assocSubgames = allProps.get(key);
+				for(Subgame each : assocSubgames)
+				{
+					if(terminalNode == null)
+					{
+						terminalNode = each.getTerminalNode();
+					}
+					unvisited.addAll(each.getBaseProps());
+					unvisited.addAll(each.getInputProps());
+					unvisited.removeAll(visited);
+				}
+
+				visited.add(key);
+				unvisited.remove(key);
+				allProps.remove(key);
+			}
+
+			Set<Proposition> newSubgameBases = new HashSet<>();
+			Set<Proposition> newSubgameInputs = new HashSet<>();
+
+			for(Proposition prop : visited)
+			{
+				if(prop.getType() == Type.base)
+				{
+					newSubgameBases.add(prop);
+				}
+				if(prop.getType() == Type.input)
+				{
+					newSubgameInputs.add(prop);
+				}
+			}
+
+			Subgame newSubgame = new Subgame(newSubgameBases, newSubgameInputs, terminalNode);
+			newSubgames.add(newSubgame);
+
+		}
+
+
+		subgames.clear();
+		subgames.addAll(newSubgames);
+
+		/*for(Proposition eachProp : allProps.keySet())
+		{
+
+
 			List<Subgame> assocSubgames = allProps.get(eachProp);
 			int numAssocSubgames = assocSubgames.size();
 
@@ -661,7 +718,7 @@ public class PropNetStateMachine extends StateMachine
 				subgames.removeAll(assocSubgames);
 				subgames.add(sgzero);
 			}
-		}
+		}*/
 	}
 
 	@Override
@@ -692,10 +749,23 @@ public class PropNetStateMachine extends StateMachine
 		Set<Proposition> inputs = subgame.getInputProps();
 		for(Proposition input : inputs)
 		{
-			diff.remove(getMoveFromProposition(input));
+			Move m = getMoveFromProposition(input);
+			diff.remove(m);
 		}
 
 		intersect.removeAll(diff);
+
+		if(intersect.isEmpty())
+		{
+			intersect.addAll(legals);
+		}
+
+		//GdlTerm noopTerm = new GdlTerm("noop");
+
+		//Move noop =
+
+		//intersect.add(noop);
+
 		return intersect;
 	}
 
