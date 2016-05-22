@@ -93,7 +93,7 @@ public class GameUtilities
 
 		for(Role r : roles)
 		{
-			List<Move> roleMoves = stateMachine.getLegalMovesSub(state, r, subgame);
+			List<Move> roleMoves = stateMachine.getLegalMoves(state, r, subgame);
 			List<List<Move>> newMoves = new ArrayList<List<Move>>();
 
 			for (List<Move> l : moves)

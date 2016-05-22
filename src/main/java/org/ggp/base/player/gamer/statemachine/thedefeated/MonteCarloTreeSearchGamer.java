@@ -67,13 +67,12 @@ public class MonteCarloTreeSearchGamer extends SampleGamer
 		{
 			if (!this.disable)
 			{
-				synchronized(lock)
+				synchronized (lock)
 				{
 					lock.notify();
 				}
 
-				log.info(GLog.MAIN_THREAD_ACTIVITY,
-						"Waking up main thread from sleep");
+				log.info(GLog.MAIN_THREAD_ACTIVITY, "Waking up main thread from sleep");
 			}
 		}
 	}
@@ -122,8 +121,7 @@ public class MonteCarloTreeSearchGamer extends SampleGamer
 	public void stateMachineMetaGame(long timeout)
 			throws TransitionDefinitionException, MoveDefinitionException, GoalDefinitionException
 	{
-		log.info(GLog.MAIN_THREAD_ACTIVITY,
-				GLog.BANNER + " Beginning meta game " + GLog.BANNER);
+		log.info(GLog.MAIN_THREAD_ACTIVITY, GLog.BANNER + " Beginning meta game " + GLog.BANNER);
 		setMetaTimeout(timeout);
 
 		timer = new Timer();
@@ -131,8 +129,7 @@ public class MonteCarloTreeSearchGamer extends SampleGamer
 		StateMachine stateMachine = getStateMachine();
 		Role role = getRole();
 		subs = stateMachine.getSubgames();
-		System.out.println("Found " + subs.size() + " subgames");
-		int minDepth = findMinDepth(stateMachine.getInitialState());
+		log.info(GLog.FACTOR, "Found " + subs.size() + " subgames");
 
 		threadManager.initializeWorkers(stateMachine, role);
 
@@ -141,27 +138,33 @@ public class MonteCarloTreeSearchGamer extends SampleGamer
 		childStates.clear();
 
 		updateRoot(getCurrentState());
-		boolean expandOurMove=false;
-		MachineState state = stateMachine.getInitialState();
-		expandWithSubgame(root, state);
+		expandWithSubgame(root);
 		childStates.put(root.state(), root);
 
-
+		int minDepth = findMinDepth(stateMachine.getInitialState());
 		threadManager.updateWorkers(root, minDepth);
+
 		threadManager.startWorkers();
 
 		waitForTimeout();
 
 		setTimeout(0);
-		log.info(GLog.MAIN_THREAD_ACTIVITY,
-				GLog.BANNER + " Ending meta game " + GLog.BANNER);
+		log.info(GLog.MAIN_THREAD_ACTIVITY, GLog.BANNER + " Ending meta game " + GLog.BANNER);
 	}
 
-
-	private void expandWithSubgame(Node node, MachineState state) throws TransitionDefinitionException, MoveDefinitionException
+	private void expandWithSubgame(Node node)
+			throws TransitionDefinitionException, MoveDefinitionException
 	{
+		if (!RuntimeParameters.FACTOR_SUBGAME)
+		{
+			return;
+		}
+
 		StateMachine stateMachine = getStateMachine();
 		Role role = getRole();
+
+		MachineState state = node.state();
+
 		List<List<Move>> moves = utility.findAllMoves(state);
 		int roleIndex = stateMachine.getRoleIndices().get(role);
 		for (List<Move> m : moves)
@@ -169,74 +172,80 @@ public class MonteCarloTreeSearchGamer extends SampleGamer
 			MachineState newState = stateMachine.getNextState(state, m);
 			boolean maxNode = utility.playerHasMoves(newState);
 			boolean found = false;
-			for(Subgame sub : subs)
+			for (Subgame sub : subs)
 			{
 				Move playerMove = m.get(roleIndex);
 				Set<Move> inputMoves = sub.getInputMoves();
-				if(inputMoves.contains(playerMove))
+				if (inputMoves.contains(playerMove))
 				{
 					Node newNode = NodePool.newNode(node, newState, m, maxNode, sub);
 					node.children().add(newNode);
 					found = true;
-					System.out.println("Subgame found");
+					log.info(GLog.FACTOR, "Subgame found");
 				}
 			}
 
-			if(!found)
+			if (!found)
 			{
-				System.out.println("No subgame for move found");
+				log.info(GLog.FACTOR, "No subgame for move found");
 			}
 		}
 
 		node.visitIncrement(1);
 		node.select();
-		if(node.children().isEmpty())
+		if (node.children().isEmpty())
 		{
-			for(List<Move> m : moves)
+			for (List<Move> m : moves)
 			{
 				MachineState newState = stateMachine.getNextState(state, m);
 				boolean maxNode = utility.playerHasMoves(newState);
 				Node newNode = NodePool.newNode(node, newState, m, maxNode, null);
 				node.children().add(newNode);
 
-				expandWithSubgame(newNode,newState);
+				expandWithSubgame(newNode);
 			}
 		}
 	}
+
 	private int findMinDepth(MachineState currentState) throws MoveDefinitionException, TransitionDefinitionException
 	{
+		if (!RuntimeParameters.FACTOR_SUBGAME)
+		{
+			return 0;
+		}
+
 		StateMachine stateMachine = getStateMachine();
 		int minDepth = 1000;
-		Random rand  = new Random();
+		Random rand = new Random();
 		int numCharges = 10;
-		for(Subgame sub : subs)
+		for (Subgame sub : subs)
 		{
-			for(int i=0; i<numCharges; i++)
+			for (int i = 0; i < numCharges; i++)
 			{
-				int depth=0;
+				int depth = 0;
 				MachineState state = new MachineState(currentState.getContents());
-				while(!stateMachine.isTerminalSub(state, sub))
+				while (!stateMachine.isTerminal(state, sub))
 				{
 					List<Move> randMove = new ArrayList<Move>();
-					for(Role r : stateMachine.getRoles())
+					for (Role r : stateMachine.getRoles())
 					{
-						if(r.equals(getRole()))
+						if (r.equals(getRole()))
 						{
-							List<Move> moves = stateMachine.getLegalMovesComplementSub(state, r, sub);
+							List<Move> moves = stateMachine.getLegalMovesComplement(state, r, sub);
 							Move m = moves.get(rand.nextInt(moves.size()));
 							randMove.add(m);
 						}
 						else
 						{
-							List<Move> moves = stateMachine.getLegalMovesSub(state, r, sub);
+							List<Move> moves = stateMachine.getLegalMoves(state, r, sub);
 							Move m = moves.get(rand.nextInt(moves.size()));
 							randMove.add(m);
 						}
 					}
-					state=stateMachine.getNextStateSub(state, randMove, sub);
+					state = stateMachine.getNextState(state, randMove, sub);
 					depth++;
 				}
-				if(depth < minDepth)
+				if (depth < minDepth)
 				{
 					minDepth = depth;
 				}
@@ -250,8 +259,7 @@ public class MonteCarloTreeSearchGamer extends SampleGamer
 	public Move stateMachineSelectMove(long timeout)
 			throws TransitionDefinitionException, MoveDefinitionException, GoalDefinitionException
 	{
-		log.info(GLog.MAIN_THREAD_ACTIVITY,
-				GLog.BANNER + " Beginning move selection " + GLog.BANNER);
+		log.info(GLog.MAIN_THREAD_ACTIVITY, GLog.BANNER + " Beginning move selection " + GLog.BANNER);
 
 		setTimeout(timeout);
 
@@ -288,9 +296,7 @@ public class MonteCarloTreeSearchGamer extends SampleGamer
 
 		setTimeout(0);
 
-
-		log.info(GLog.MAIN_THREAD_ACTIVITY,
-				GLog.BANNER + " Ending move selection " + GLog.BANNER);
+		log.info(GLog.MAIN_THREAD_ACTIVITY, GLog.BANNER + " Ending move selection " + GLog.BANNER);
 		TreeSearchWorker.printStats();
 
 		return bestMove;
@@ -307,7 +313,7 @@ public class MonteCarloTreeSearchGamer extends SampleGamer
 				long sleep_interval = getRemainingTime();
 				log.info(GLog.MAIN_THREAD_ACTIVITY, "Sleeping for: " + sleep_interval);
 
-				synchronized(lock)
+				synchronized (lock)
 				{
 					timer.schedule(threadTimer, sleep_interval);
 					lock.wait(sleep_interval);
@@ -337,8 +343,6 @@ public class MonteCarloTreeSearchGamer extends SampleGamer
 			moveCount.put(m, 0);
 		}
 
-
-
 		boolean opponentHasMoves = utility.opponentHasMoves(currentState);
 
 		for (Node child : root.children())
@@ -348,11 +352,9 @@ public class MonteCarloTreeSearchGamer extends SampleGamer
 			// see if we can find an immediate winning move
 			if (!opponentHasMoves && utility.isWinningState(child.state()))
 			{
-				log.info(GLog.MOVE_EVALUATION,
-						"Performing winning move");
+				log.info(GLog.MOVE_EVALUATION, "Performing winning move");
 				log.info(GLog.MOVE_EVALUATION, m);
-				log.info(GLog.MOVE_EVALUATION,
-						"Congratulations");
+				log.info(GLog.MOVE_EVALUATION, "Congratulations");
 				return m;
 			}
 
@@ -382,10 +384,8 @@ public class MonteCarloTreeSearchGamer extends SampleGamer
 				score = move.getValue() / moveCount.get(m);
 			}
 
-			log.info(GLog.MOVE_EVALUATION,
-					"Considering move");
-			log.info(GLog.MOVE_EVALUATION,
-					score + " : " + m);
+			log.info(GLog.MOVE_EVALUATION, "Considering move");
+			log.info(GLog.MOVE_EVALUATION, score + " : " + m);
 
 			if (score > maxScore)
 			{
@@ -394,10 +394,8 @@ public class MonteCarloTreeSearchGamer extends SampleGamer
 			}
 		}
 
-		log.info(GLog.MOVE_EVALUATION,
-				"Best move: ");
-		log.info(GLog.MOVE_EVALUATION,
-				maxScore + " : " + bestMove);
+		log.info(GLog.MOVE_EVALUATION, "Best move: ");
+		log.info(GLog.MOVE_EVALUATION, maxScore + " : " + bestMove);
 
 		return bestMove;
 	}
@@ -425,40 +423,13 @@ public class MonteCarloTreeSearchGamer extends SampleGamer
 			{
 				root.orphan();
 				root = NodePool.newNode(null, currentState, null, true, null);
-				log.error(GLog.ERRORS, "Missed finding the tree - investigate");
+				log.error(GLog.ERRORS,
+						"Missed finding the tree - investigate");
 
-
-				StateMachine stateMachine = getStateMachine();
-				Role role = getRole();
-				MachineState initial = stateMachine.getInitialState();
-				List<List<Move>> moves = utility.findAllMoves(initial);
-				int roleIndex = stateMachine.getRoleIndices().get(role);
-				for (List<Move> m : moves)
-				{
-					MachineState newState = stateMachine.getNextState(initial, m);
-					boolean maxNode = utility.playerHasMoves(newState);
-					boolean found = false;
-					for(Subgame sub : subs)
-					{
-						Move playerMove = m.get(roleIndex);
-						Set<Move> inputMoves = sub.getInputMoves();
-						if(inputMoves.contains(playerMove))
-						{
-							Node newNode = NodePool.newNode(root, newState, m, maxNode, sub);
-							root.children().add(newNode);
-							found = true;
-						}
-					}
-
-					if(!found)
-					{
-						System.out.println("No subgame for move found");
-					}
-				}
+				expandWithSubgame(root);
 
 				root.visitIncrement(1);
 				root.select();
-
 			}
 
 			childStates.clear();
@@ -505,29 +476,24 @@ public class MonteCarloTreeSearchGamer extends SampleGamer
 		return endTime - nowTime;
 	}
 
-    @Override
-    public StateMachine getInitialStateMachine() {
-    	if (RuntimeParameters.UNITTEST_PROPNET)
-    	{
-    		return new UnitTestStateMachine(new PropNetStateMachine(), new ProverStateMachine());
-    	}
+	@Override
+	public StateMachine getInitialStateMachine()
+	{
+		if (RuntimeParameters.UNITTEST_PROPNET)
+		{
+			return new UnitTestStateMachine(new PropNetStateMachine(), new ProverStateMachine());
+		}
 
-    	return new CachedStateMachine(new PropNetStateMachine());
-    }
+		return new CachedStateMachine(new PropNetStateMachine());
+	}
 
 	private static void printParameters()
 	{
-		log.info(GLog.MAIN_THREAD_ACTIVITY,
-				"Running with the following parameters: ");
-		log.info(GLog.MAIN_THREAD_ACTIVITY,
-				"# of threads: " + MachineParameters.NUM_CORES);
-		log.info(GLog.MAIN_THREAD_ACTIVITY,
-				"Exploration parameter: " + RuntimeParameters.EXPLORATION_FACTOR);
-		log.info(GLog.MAIN_THREAD_ACTIVITY,
-				"Depth charge count: " + RuntimeParameters.DEPTH_CHARGE_COUNT);
-		log.info(GLog.MAIN_THREAD_ACTIVITY,
-				"Time buffer: " + MachineParameters.TIME_BUFFER);
-		log.info(GLog.MAIN_THREAD_ACTIVITY,
-				"Minimax: " + RuntimeParameters.MINIMAX);
+		log.info(GLog.MAIN_THREAD_ACTIVITY, "Running with the following parameters: ");
+		log.info(GLog.MAIN_THREAD_ACTIVITY, "# of threads: " + MachineParameters.NUM_CORES);
+		log.info(GLog.MAIN_THREAD_ACTIVITY, "Exploration parameter: " + RuntimeParameters.EXPLORATION_FACTOR);
+		log.info(GLog.MAIN_THREAD_ACTIVITY, "Depth charge count: " + RuntimeParameters.DEPTH_CHARGE_COUNT);
+		log.info(GLog.MAIN_THREAD_ACTIVITY, "Time buffer: " + MachineParameters.TIME_BUFFER);
+		log.info(GLog.MAIN_THREAD_ACTIVITY, "Minimax: " + RuntimeParameters.MINIMAX);
 	}
 }

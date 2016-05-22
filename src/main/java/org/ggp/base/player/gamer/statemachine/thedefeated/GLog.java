@@ -27,6 +27,8 @@ public class GLog
 	public static final String S_ERRORS = "Error";
 	public static final String S_PROPNET = "PropNet";
 	public static final String S_UNITTEST = "UnitTest";
+	public static final String S_FACTOR = "Factor";
+	public static final String S_MEMORY = "Memory";
 
 	public static final Marker MAIN_THREAD_ACTIVITY = MarkerManager.getMarker(S_MAIN_THREAD_ACTIVITY);
 	public static final Marker NODE_STATS = MarkerManager.getMarker(S_NODE_STATS);
@@ -36,6 +38,8 @@ public class GLog
 	public static final Marker ERRORS = MarkerManager.getMarker(S_ERRORS);
 	public static final Marker PROPNET = MarkerManager.getMarker(S_PROPNET);
 	public static final Marker UNITTEST = MarkerManager.getMarker(S_UNITTEST);
+	public static final Marker FACTOR = MarkerManager.getMarker(S_FACTOR);
+	public static final Marker MEMORY = MarkerManager.getMarker(S_MEMORY);
 
 	public static final String BANNER = "==========";
 
@@ -54,6 +58,10 @@ public class GLog
 	private static final MarkerFilter F_PROPNET = MarkerFilter.createFilter(S_PROPNET, Filter.Result.DENY,
 			Filter.Result.NEUTRAL);
 	private static final MarkerFilter F_UNITTEST = MarkerFilter.createFilter(S_UNITTEST, Filter.Result.DENY,
+			Filter.Result.NEUTRAL);
+	private static final MarkerFilter F_FACTOR = MarkerFilter.createFilter(S_FACTOR, Filter.Result.DENY,
+			Filter.Result.NEUTRAL);
+	private static final MarkerFilter F_MEMORY = MarkerFilter.createFilter(S_MEMORY, Filter.Result.DENY,
 			Filter.Result.NEUTRAL);
 
 
@@ -127,6 +135,21 @@ public class GLog
 		if (!RuntimeParameters.LOG_PROPNET)
 		{
 			loggerConfig.addFilter(F_PROPNET);
+		}
+
+		if (!RuntimeParameters.LOG_UNITTEST)
+		{
+			loggerConfig.addFilter(F_UNITTEST);
+		}
+
+		if (!RuntimeParameters.LOG_FACTOR)
+		{
+			loggerConfig.addFilter(F_FACTOR);
+		}
+
+		if (!RuntimeParameters.LOG_MEMORY)
+		{
+			loggerConfig.addFilter(F_MEMORY);
 		}
 	}
 

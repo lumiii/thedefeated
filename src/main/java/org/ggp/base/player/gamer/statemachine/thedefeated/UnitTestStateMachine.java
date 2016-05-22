@@ -210,8 +210,8 @@ public class UnitTestStateMachine extends StateMachine
 		{
 			if (referenceMachine.canPlaySubgames())
 			{
-				int reference = referenceMachine.getGoalSub(state, role, subgame);
-				int test = testMachine.getGoalSub(state, role, subgame);
+				int reference = referenceMachine.getGoal(state, role, subgame);
+				int test = testMachine.getGoal(state, role, subgame);
 
 				if (checkResults(test, reference))
 				{
@@ -222,7 +222,7 @@ public class UnitTestStateMachine extends StateMachine
 			}
 
 			// else
-			return testMachine.getGoalSub(state, role, subgame);
+			return testMachine.getGoal(state, role, subgame);
 		}
 
 		throw new UnsupportedOperationException("Subgame operations not supported!");
@@ -235,8 +235,8 @@ public class UnitTestStateMachine extends StateMachine
 		{
 			if (referenceMachine.canPlaySubgames())
 			{
-				boolean reference = referenceMachine.isTerminalSub(state, subgame);
-				boolean test = testMachine.isTerminalSub(state, subgame);
+				boolean reference = referenceMachine.isTerminal(state, subgame);
+				boolean test = testMachine.isTerminal(state, subgame);
 
 				if (checkResults(test, reference))
 				{
@@ -247,7 +247,7 @@ public class UnitTestStateMachine extends StateMachine
 			}
 
 			// else
-			return testMachine.isTerminalSub(state, subgame);
+			return testMachine.isTerminal(state, subgame);
 		}
 
 		throw new UnsupportedOperationException("Subgame operations not supported!");
@@ -260,8 +260,8 @@ public class UnitTestStateMachine extends StateMachine
 		{
 			if (referenceMachine.canPlaySubgames())
 			{
-				List<Move> reference = referenceMachine.getLegalMovesSub(state, role, subgame);
-				List<Move> test = testMachine.getLegalMovesSub(state, role, subgame);
+				List<Move> reference = referenceMachine.getLegalMoves(state, role, subgame);
+				List<Move> test = testMachine.getLegalMoves(state, role, subgame);
 
 				if (checkResults(test, reference))
 				{
@@ -272,7 +272,7 @@ public class UnitTestStateMachine extends StateMachine
 			}
 
 			// else
-			return testMachine.getLegalMovesSub(state, role, subgame);
+			return testMachine.getLegalMoves(state, role, subgame);
 		}
 
 		throw new UnsupportedOperationException("Subgame operations not supported!");
@@ -286,8 +286,8 @@ public class UnitTestStateMachine extends StateMachine
 		{
 			if (referenceMachine.canPlaySubgames())
 			{
-				MachineState reference = referenceMachine.getNextStateSub(state, moves, subgame);
-				MachineState test = testMachine.getNextStateSub(state, moves, subgame);
+				MachineState reference = referenceMachine.getNextState(state, moves, subgame);
+				MachineState test = testMachine.getNextState(state, moves, subgame);
 
 				if (checkResults(test, reference))
 				{
@@ -298,7 +298,7 @@ public class UnitTestStateMachine extends StateMachine
 			}
 
 			// else
-			return testMachine.getNextStateSub(state, moves, subgame);
+			return testMachine.getNextState(state, moves, subgame);
 		}
 
 		throw new UnsupportedOperationException("Subgame operations not supported!");

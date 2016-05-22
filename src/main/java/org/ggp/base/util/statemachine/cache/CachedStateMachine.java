@@ -170,26 +170,26 @@ public final class CachedStateMachine extends StateMachine
 	@Override
 	public int getGoalSub(MachineState state, Role role, Subgame subgame) throws GoalDefinitionException
 	{
-		return backingStateMachine.getGoalSub(state, role, subgame);
+		return backingStateMachine.getGoal(state, role, subgame);
 	}
 
 	@Override
 	public boolean isTerminalSub(MachineState state, Subgame subgame)
 	{
-		return backingStateMachine.isTerminalSub(state, subgame);
+		return backingStateMachine.isTerminal(state, subgame);
 	}
 
 	@Override
 	public List<Move> getLegalMovesSub(MachineState state, Role role, Subgame subgame) throws MoveDefinitionException
 	{
-		return backingStateMachine.getLegalMovesSub(state, role, subgame);
+		return backingStateMachine.getLegalMoves(state, role, subgame);
 	}
 
 	@Override
 	public MachineState getNextStateSub(MachineState state, List<Move> moves, Subgame subgame)
 			throws TransitionDefinitionException
 	{
-		return backingStateMachine.getNextStateSub(state, moves, subgame);
+		return backingStateMachine.getNextState(state, moves, subgame);
 	}
 
 	@Override
@@ -203,6 +203,6 @@ public final class CachedStateMachine extends StateMachine
 			throws MoveDefinitionException
 	{
 		// TODO Auto-generated method stub
-		return backingStateMachine.getLegalMovesComplementSub(state, role, subgame);
+		return backingStateMachine.getLegalMovesComplement(state, role, subgame);
 	}
 }

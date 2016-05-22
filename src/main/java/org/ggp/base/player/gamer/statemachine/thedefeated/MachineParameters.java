@@ -6,7 +6,7 @@ public class MachineParameters
 {
 	public static final int NUM_CORES = 1;
 	public static final int META_TIME_PAD = 1000;
-	public static final int MAX_NODES = 200000;
+	public static final int MAX_NODES = 7000;
 	public static final int LOW_NODE_THRESHOLD = 1000;
 
 	public static final int MAIN_THREAD_PRIORITY = Thread.MAX_PRIORITY;

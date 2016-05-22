@@ -30,6 +30,8 @@ public class NodePool
 		}
 
 		nodeCount += size;
+		GLog.getRootLogger().info(GLog.MEMORY,
+				"Node count currently: " + nodeCount);
 	}
 
 	public static void collect(Node node)
