@@ -48,6 +48,7 @@ public abstract class StateMachine
 	 */
 	public abstract List<Move> findActions(Role role) throws MoveDefinitionException;
 
+	public abstract Map<Proposition, Boolean> getLatchInhibitors(List<Proposition> inhibitors);
 
 	public abstract List<Proposition> findBaseInhibitors(Role role);
 	/**

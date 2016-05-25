@@ -135,6 +135,7 @@ public class MonteCarloTreeSearchGamer extends SampleGamer
 
 
 		List<Proposition> inhibitors = stateMachine.findBaseInhibitors(role);
+		Map<Proposition, Boolean> latches = stateMachine.getLatchInhibitors(inhibitors);
 
 		threadManager.initializeWorkers(stateMachine, role);
 

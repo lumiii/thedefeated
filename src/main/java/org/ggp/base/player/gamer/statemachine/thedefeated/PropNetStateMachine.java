@@ -83,6 +83,7 @@ public class PropNetStateMachine extends StateMachine
 		}
 	}
 
+
 	@Override
 	public List<Proposition> findBaseInhibitors(Role role)
 	{
@@ -155,6 +156,92 @@ public class PropNetStateMachine extends StateMachine
 			finalPath.addAll(expandPath(i, newPaths));
 		}
 		return finalPath;
+	}
+
+	@Override
+	public Map<Proposition, Boolean> getLatchInhibitors(List<Proposition> inhibitors)
+	{
+		Map<Proposition, Boolean> latches = new HashMap<>();
+
+		for(Proposition inhibitor : inhibitors)
+		{
+			Set<Proposition> ancestors = new HashSet<>();
+			Set<Component> seen = new HashSet<>();
+
+			Stack<Component> uncheckedProps = new Stack<>();
+			Component currentComp = inhibitor;
+			uncheckedProps.add(currentComp);
+
+			while(!uncheckedProps.isEmpty())
+			{
+				currentComp = uncheckedProps.pop();
+				seen.add(currentComp);
+				uncheckedProps.addAll(currentComp.getInputs());
+				if(currentComp.getType() == Type.base || currentComp.getType() == Type.input)
+				{
+					ancestors.add((Proposition)currentComp);
+				}
+				uncheckedProps.removeAll(seen);
+			}
+
+			if(checkLatch(inhibitor, ancestors, true))
+			{
+				latches.put(inhibitor, true);
+			}
+			else if(checkLatch(inhibitor, ancestors, false))
+			{
+				latches.put(inhibitor, false);
+			}
+		}
+
+		return latches;
+	}
+
+	private boolean checkLatch(Proposition prop, Set<Proposition> ancestors, boolean latchType)
+	{
+		prop.setValueFromParent(latchType);
+
+		Proposition[] props = new Proposition[ancestors.size()];
+
+		int index = 0;
+		for(Proposition ancestor : ancestors)
+		{
+			ancestor.setValueFromParent(false);
+			props[index] = ancestor;
+			index++;
+		}
+
+		boolean done = false;
+		while(!done)
+		{
+			propagateMoves();
+			if(prop.getSingleInput().getValue() != latchType) return false;
+
+			boolean carryOver = true;
+			int i = 0;
+
+			while(carryOver)
+			{
+				if(!props[i].getValue())
+				{
+					props[i].setValueFromParent(true);
+					carryOver = false;
+				}
+				else
+				{
+					props[i].setValueFromParent(false);
+					i++;
+
+					if(i == props.length)
+					{
+						carryOver = false;
+						done = true;
+					}
+				}
+			}
+		}
+
+		return true;
 	}
 
 	private void populateStartingComponents()
