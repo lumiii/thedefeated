@@ -213,4 +213,11 @@ public final class CachedStateMachine extends StateMachine
 		// TODO Auto-generated method stub
 		return backingStateMachine.findBaseInhibitors(role);
 	}
+
+	@Override
+	public Map<Proposition, Boolean> getLatchInhibitors(List<Proposition> inhibitors)
+	{
+		// TODO Auto-generated method stub
+		return backingStateMachine.getLatchInhibitors(inhibitors);
+	}
 }

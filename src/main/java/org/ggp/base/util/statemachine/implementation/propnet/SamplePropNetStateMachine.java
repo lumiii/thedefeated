@@ -272,4 +272,11 @@ public class SamplePropNetStateMachine extends StateMachine {
 		// TODO Auto-generated method stub
 		return null;
 	}
+
+	@Override
+	public Map<Proposition, Boolean> getLatchInhibitors(List<Proposition> inhibitors)
+	{
+		// TODO Auto-generated method stub
+		return null;
+	}
 }

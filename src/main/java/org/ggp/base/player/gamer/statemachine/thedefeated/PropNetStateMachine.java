@@ -194,6 +194,8 @@ public class PropNetStateMachine extends StateMachine
 			}
 		}
 
+		System.out.println("Latches: " +latches);
+
 		return latches;
 	}
 

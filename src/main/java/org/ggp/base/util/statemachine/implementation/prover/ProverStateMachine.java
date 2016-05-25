@@ -2,6 +2,7 @@ package org.ggp.base.util.statemachine.implementation.prover;
 
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 
 import org.ggp.base.player.gamer.statemachine.thedefeated.Subgame;
@@ -185,6 +186,13 @@ public class ProverStateMachine extends StateMachine
 
 	@Override
 	public List<Proposition> findBaseInhibitors(Role role)
+	{
+		// TODO Auto-generated method stub
+		return null;
+	}
+
+	@Override
+	public Map<Proposition, Boolean> getLatchInhibitors(List<Proposition> inhibitors)
 	{
 		// TODO Auto-generated method stub
 		return null;
