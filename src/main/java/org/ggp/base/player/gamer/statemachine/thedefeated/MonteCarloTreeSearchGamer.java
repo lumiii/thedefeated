@@ -16,6 +16,7 @@ import org.ggp.base.player.gamer.statemachine.sample.SampleGamer;
 import org.ggp.base.player.gamer.statemachine.sample.TreeSearchWorker;
 import org.ggp.base.player.gamer.statemachine.thedefeated.node.Node;
 import org.ggp.base.player.gamer.statemachine.thedefeated.node.NodePool;
+import org.ggp.base.util.propnet.architecture.components.Proposition;
 import org.ggp.base.util.statemachine.MachineState;
 import org.ggp.base.util.statemachine.Move;
 import org.ggp.base.util.statemachine.Role;
@@ -126,10 +127,14 @@ public class MonteCarloTreeSearchGamer extends SampleGamer
 
 		timer = new Timer();
 
+
 		StateMachine stateMachine = getStateMachine();
 		Role role = getRole();
 		subs = stateMachine.getSubgames();
 		log.info(GLog.FACTOR, "Found " + subs.size() + " subgames");
+
+
+		List<Proposition> inhibitors = stateMachine.findBaseInhibitors(role);
 
 		threadManager.initializeWorkers(stateMachine, role);
 

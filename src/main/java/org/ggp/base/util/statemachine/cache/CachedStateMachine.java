@@ -7,6 +7,7 @@ import java.util.Set;
 
 import org.ggp.base.player.gamer.statemachine.thedefeated.Subgame;
 import org.ggp.base.util.gdl.grammar.Gdl;
+import org.ggp.base.util.propnet.architecture.components.Proposition;
 import org.ggp.base.util.statemachine.MachineState;
 import org.ggp.base.util.statemachine.Move;
 import org.ggp.base.util.statemachine.Role;
@@ -204,5 +205,12 @@ public final class CachedStateMachine extends StateMachine
 	{
 		// TODO Auto-generated method stub
 		return backingStateMachine.getLegalMovesComplement(state, role, subgame);
+	}
+
+	@Override
+	public List<Proposition> findBaseInhibitors(Role role)
+	{
+		// TODO Auto-generated method stub
+		return backingStateMachine.findBaseInhibitors(role);
 	}
 }

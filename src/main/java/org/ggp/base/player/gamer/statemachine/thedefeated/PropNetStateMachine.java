@@ -1,6 +1,7 @@
 package org.ggp.base.player.gamer.statemachine.thedefeated;
 
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -80,6 +81,80 @@ public class PropNetStateMachine extends StateMachine
 		{
 			throw new RuntimeException(e);
 		}
+	}
+
+	@Override
+	public List<Proposition> findBaseInhibitors(Role role)
+	{
+		Set<Proposition> goalProps  = propNet.getGoalPropositions().get(role);
+		Set<Proposition> bestGoals  = new HashSet<Proposition>();
+
+		for(Proposition p: goalProps)
+		{
+			int score = getGoalValue(p);
+			if(score == 100)
+			{
+				bestGoals.add(p);
+			}
+		}
+
+
+		ArrayList<List<Component>> allPaths = new ArrayList<List<Component>>();
+		for(Proposition p: bestGoals)
+		{
+			ArrayList<List<Component>> path = new ArrayList<List<Component>>();
+			path.add(new ArrayList<Component>());
+			List<List<Component>> paths = expandPath(p, path);
+			allPaths.addAll(paths);
+		}
+
+
+		ArrayList<Proposition> inhibitors = new ArrayList<Proposition>();
+		Collection<Proposition> bases =  propNet.getBasePropositions().values();
+		for(Proposition base : bases)
+		{
+			boolean inhibitor = true;
+			for(List<Component> path : allPaths)
+			{
+				if(!path.contains(base))
+				{
+					inhibitor = false;
+					break;
+				}
+			}
+			if(inhibitor)
+			{
+				inhibitors.add(base);
+			}
+		}
+
+		return inhibitors;
+	}
+
+	private List<List<Component>> expandPath(Component c, List<List<Component>> paths)
+	{
+		Set<Component> inputs = c.getInputs();
+		ArrayList<List<Component>> finalPath = new ArrayList<List<Component>>();
+		for(Component i : inputs)
+		{
+
+			ArrayList<List<Component>> newPaths = new ArrayList<List<Component>>();
+			for(List<Component> path : paths)
+			{
+				if(path.contains(i))
+				{
+					return paths;
+				}
+				else
+				{
+					ArrayList<Component> newPath = new ArrayList<Component>(path);
+					newPath.add(i);
+					newPaths.add(newPath);
+				}
+			}
+			finalPath.addAll(expandPath(i, newPaths));
+		}
+		return finalPath;
 	}
 
 	private void populateStartingComponents()

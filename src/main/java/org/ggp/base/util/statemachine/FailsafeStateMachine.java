@@ -9,6 +9,7 @@ import org.ggp.base.util.gdl.grammar.GdlConstant;
 import org.ggp.base.util.gdl.grammar.GdlSentence;
 import org.ggp.base.util.gdl.grammar.GdlTerm;
 import org.ggp.base.util.logging.GamerLogger;
+import org.ggp.base.util.propnet.architecture.components.Proposition;
 import org.ggp.base.util.statemachine.exceptions.GoalDefinitionException;
 import org.ggp.base.util.statemachine.exceptions.MoveDefinitionException;
 import org.ggp.base.util.statemachine.exceptions.TransitionDefinitionException;
@@ -471,6 +472,13 @@ public class FailsafeStateMachine extends StateMachine
 	@Override
 	public List<Move> getLegalMovesComplementSub(MachineState state, Role role, Subgame subgame)
 			throws MoveDefinitionException
+	{
+		// TODO Auto-generated method stub
+		return null;
+	}
+
+	@Override
+	public List<Proposition> findBaseInhibitors(Role role)
 	{
 		// TODO Auto-generated method stub
 		return null;

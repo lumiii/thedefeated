@@ -5,6 +5,7 @@ import java.util.Set;
 
 import org.apache.logging.log4j.Logger;
 import org.ggp.base.util.gdl.grammar.Gdl;
+import org.ggp.base.util.propnet.architecture.components.Proposition;
 import org.ggp.base.util.statemachine.MachineState;
 import org.ggp.base.util.statemachine.Move;
 import org.ggp.base.util.statemachine.Role;
@@ -313,6 +314,13 @@ public class UnitTestStateMachine extends StateMachine
 	@Override
 	public List<Move> getLegalMovesComplementSub(MachineState state, Role role, Subgame subgame)
 			throws MoveDefinitionException
+	{
+		// TODO Auto-generated method stub
+		return null;
+	}
+
+	@Override
+	public List<Proposition> findBaseInhibitors(Role role)
 	{
 		// TODO Auto-generated method stub
 		return null;

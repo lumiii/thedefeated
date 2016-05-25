@@ -10,6 +10,7 @@ import org.ggp.base.util.gdl.grammar.GdlConstant;
 import org.ggp.base.util.gdl.grammar.GdlRelation;
 import org.ggp.base.util.gdl.grammar.GdlSentence;
 import org.ggp.base.util.logging.GamerLogger;
+import org.ggp.base.util.propnet.architecture.components.Proposition;
 import org.ggp.base.util.prover.Prover;
 import org.ggp.base.util.prover.aima.AimaProver;
 import org.ggp.base.util.statemachine.MachineState;
@@ -177,6 +178,13 @@ public class ProverStateMachine extends StateMachine
 	@Override
 	public List<Move> getLegalMovesComplementSub(MachineState state, Role role, Subgame subgame)
 			throws MoveDefinitionException
+	{
+		// TODO Auto-generated method stub
+		return null;
+	}
+
+	@Override
+	public List<Proposition> findBaseInhibitors(Role role)
 	{
 		// TODO Auto-generated method stub
 		return null;

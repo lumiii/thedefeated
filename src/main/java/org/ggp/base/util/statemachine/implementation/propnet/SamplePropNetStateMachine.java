@@ -265,4 +265,11 @@ public class SamplePropNetStateMachine extends StateMachine {
 		// TODO Auto-generated method stub
 		return null;
 	}
+
+	@Override
+	public List<Proposition> findBaseInhibitors(Role role)
+	{
+		// TODO Auto-generated method stub
+		return null;
+	}
 }

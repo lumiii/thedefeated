@@ -14,6 +14,7 @@ import org.ggp.base.util.gdl.grammar.Gdl;
 import org.ggp.base.util.gdl.grammar.GdlConstant;
 import org.ggp.base.util.gdl.grammar.GdlSentence;
 import org.ggp.base.util.gdl.grammar.GdlTerm;
+import org.ggp.base.util.propnet.architecture.components.Proposition;
 import org.ggp.base.util.statemachine.exceptions.GoalDefinitionException;
 import org.ggp.base.util.statemachine.exceptions.MoveDefinitionException;
 import org.ggp.base.util.statemachine.exceptions.TransitionDefinitionException;
@@ -47,6 +48,8 @@ public abstract class StateMachine
 	 */
 	public abstract List<Move> findActions(Role role) throws MoveDefinitionException;
 
+
+	public abstract List<Proposition> findBaseInhibitors(Role role);
 	/**
 	 * Returns the initial state of the game.
 	 */
