@@ -1,7 +1,6 @@
 package org.ggp.base.player.gamer.statemachine.thedefeated;
 
 import java.util.ArrayList;
-import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -21,6 +20,8 @@ import org.ggp.base.util.gdl.grammar.GdlSentence;
 import org.ggp.base.util.propnet.architecture.Component;
 import org.ggp.base.util.propnet.architecture.Component.Type;
 import org.ggp.base.util.propnet.architecture.PropNet;
+import org.ggp.base.util.propnet.architecture.components.And;
+import org.ggp.base.util.propnet.architecture.components.Or;
 import org.ggp.base.util.propnet.architecture.components.Proposition;
 import org.ggp.base.util.propnet.factory.OptimizingPropNetFactory;
 import org.ggp.base.util.statemachine.MachineState;
@@ -100,34 +101,40 @@ public class PropNetStateMachine extends StateMachine
 		}
 
 
-		ArrayList<List<Component>> allPaths = new ArrayList<List<Component>>();
-		for(Proposition p: bestGoals)
-		{
-			ArrayList<List<Component>> path = new ArrayList<List<Component>>();
-			path.add(new ArrayList<Component>());
-			List<List<Component>> paths = expandPath(p, path);
-			allPaths.addAll(paths);
-		}
-
+		//ArrayList<List<Component>> allPaths = new ArrayList<List<Component>>();
+		//for(Proposition p: bestGoals)
+		//{
+			//ArrayList<List<Component>> path = new ArrayList<List<Component>>();
+			//path.add(new ArrayList<Component>());
+			//List<List<Component>> paths = expandPath(p, path);
+			//allPaths.addAll(paths);
+		//}
 
 		ArrayList<Proposition> inhibitors = new ArrayList<Proposition>();
-		Collection<Proposition> bases =  propNet.getBasePropositions().values();
-		for(Proposition base : bases)
+		for(Proposition p: bestGoals)
 		{
-			boolean inhibitor = true;
-			for(List<Component> path : allPaths)
-			{
-				if(!path.contains(base))
-				{
-					inhibitor = false;
-					break;
-				}
-			}
-			if(inhibitor)
-			{
-				inhibitors.add(base);
-			}
+			List<Proposition> paths = searchTree(p);
+			inhibitors.addAll(paths);
 		}
+
+		//ArrayList<Proposition> inhibitors = new ArrayList<Proposition>();
+		//Collection<Proposition> bases =  propNet.getBasePropositions().values();
+		//for(Proposition base : bases)
+	//	{
+			//boolean inhibitor = true;
+		//	for(List<Component> path : allPaths)
+			//{
+				//if(!path.contains(base) && !path.contains(null))
+			//	{
+				//	inhibitor = false;
+					//break;
+				//}
+			//}
+			//if(inhibitor)
+			//{
+//				inhibitors.add(base);
+	//		}
+		//}
 
 		return inhibitors;
 	}
@@ -136,6 +143,8 @@ public class PropNetStateMachine extends StateMachine
 	{
 		Set<Component> inputs = c.getInputs();
 		ArrayList<List<Component>> finalPath = new ArrayList<List<Component>>();
+
+
 		for(Component i : inputs)
 		{
 
@@ -149,15 +158,101 @@ public class PropNetStateMachine extends StateMachine
 				else
 				{
 					ArrayList<Component> newPath = new ArrayList<Component>(path);
-					newPath.add(i);
+					if(i instanceof Proposition)
+					{
+						Proposition p = (Proposition)i;
+						if(i.getType() == Type.base)
+						{
+							newPath.add(i);
+						}
+					}
 					newPaths.add(newPath);
 				}
 			}
-			finalPath.addAll(expandPath(i, newPaths));
+			List<List<Component>> result = expandPath(i, newPaths);
+			if(result!=null)
+			{
+				finalPath.addAll(result);
+			}
 		}
 		return finalPath;
 	}
 
+
+	public List<Proposition> searchTree(Component c)
+	{
+		List<Proposition> inhibitors = new ArrayList<Proposition>();
+		if(c instanceof And)
+		{
+			for(Component i : c.getInputs())
+			{
+				if(i instanceof Proposition && ((Proposition)i).getType()== Type.base)
+				{
+					inhibitors.add((Proposition)i);
+				}
+				else
+				{
+					inhibitors.addAll(searchTree(c));
+				}
+			}
+
+
+		}
+		else if(c instanceof Or)
+		{
+
+			List<List<Proposition>> l = new ArrayList<List<Proposition>>();
+			for(Component i : c.getInputs())
+			{
+
+				if(i instanceof Proposition && ((Proposition)i).getType()== Type.base)
+				{
+					List<Proposition> temp = new ArrayList<Proposition>();
+					temp.add((Proposition)i);
+					l.add(temp);
+				}
+				else
+				{
+					List<Proposition> temp = searchTree(c);
+					l.add(temp);
+				}
+			}
+			for(Component co : l.get(0))
+			{
+				boolean inhib = true;
+				for(List<Proposition> li : l)
+				{
+					if(!li.contains(co))
+					{
+						inhib = false;
+						break;
+					}
+
+				}
+				if(inhib)
+				{
+					inhibitors.add((Proposition)co);
+				}
+			}
+		}
+		else if(c instanceof Proposition)
+		{
+			if(c.getType() == Type.base)
+			{
+				inhibitors.add((Proposition)c);
+			}
+			else
+			{
+				inhibitors.addAll(searchTree(c.getSingleInput()));
+			}
+		}
+		else if(c.getInputs().size()==1)
+		{
+			inhibitors.addAll(searchTree(c.getSingleInput()));
+		}
+		return inhibitors;
+
+	}
 	@Override
 	public Map<Proposition, Boolean> getLatchInhibitors(List<Proposition> inhibitors)
 	{
