@@ -299,11 +299,14 @@ public class PropNetStateMachine extends StateMachine
 		prop.setValueFromParent(latchType);
 
 		Proposition[] props = new Proposition[ancestors.size()];
+		boolean[] truthValues = new boolean[props.length];
+
+		Set<Proposition> markings = new HashSet<>();
 
 		int index = 0;
 		for(Proposition ancestor : ancestors)
 		{
-			ancestor.setValueFromParent(false);
+			truthValues[index] = false;
 			props[index] = ancestor;
 			index++;
 		}
@@ -311,7 +314,14 @@ public class PropNetStateMachine extends StateMachine
 		boolean done = false;
 		while(!done)
 		{
-			propagateMoves();
+			Set<GdlSentence> sentenceMarkings = new HashSet<>();
+			for (Proposition marking : markings)
+			{
+				sentenceMarkings.add(marking.getName());
+			}
+
+			propagateMoves(sentenceMarkings);
+
 			if(prop.getSingleInput().getValue() != latchType) return false;
 
 			boolean carryOver = true;
@@ -319,14 +329,14 @@ public class PropNetStateMachine extends StateMachine
 
 			while(carryOver)
 			{
-				if(!props[i].getValue())
+				if(!truthValues[i])
 				{
-					props[i].setValueFromParent(true);
+					markings.add(props[i]);
 					carryOver = false;
 				}
 				else
 				{
-					props[i].setValueFromParent(false);
+					markings.remove(props[i]);
 					i++;
 
 					if(i == props.length)
