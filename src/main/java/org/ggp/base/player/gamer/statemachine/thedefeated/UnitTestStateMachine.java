@@ -1,12 +1,10 @@
 package org.ggp.base.player.gamer.statemachine.thedefeated;
 
 import java.util.List;
-import java.util.Map;
 import java.util.Set;
 
 import org.apache.logging.log4j.Logger;
 import org.ggp.base.util.gdl.grammar.Gdl;
-import org.ggp.base.util.propnet.architecture.components.Proposition;
 import org.ggp.base.util.statemachine.MachineState;
 import org.ggp.base.util.statemachine.Move;
 import org.ggp.base.util.statemachine.Role;
@@ -15,13 +13,13 @@ import org.ggp.base.util.statemachine.exceptions.GoalDefinitionException;
 import org.ggp.base.util.statemachine.exceptions.MoveDefinitionException;
 import org.ggp.base.util.statemachine.exceptions.TransitionDefinitionException;
 
-public class UnitTestStateMachine extends StateMachine
+public class UnitTestStateMachine extends AugmentedStateMachine
 {
 	private static final Logger log = GLog.getLogger(UnitTestStateMachine.class);
-	StateMachine testMachine;
+	AugmentedStateMachine testMachine;
 	StateMachine referenceMachine;
 
-	public UnitTestStateMachine(StateMachine testMachine, StateMachine referenceMachine)
+	public UnitTestStateMachine(AugmentedStateMachine testMachine, StateMachine referenceMachine)
 	{
 		this.testMachine = testMachine;
 		this.referenceMachine = referenceMachine;
@@ -183,154 +181,44 @@ public class UnitTestStateMachine extends StateMachine
 	@Override
 	public Set<Subgame> getSubgames()
 	{
-		if (testMachine.canPlaySubgames())
-		{
-			if (referenceMachine.canPlaySubgames())
-			{
-				Set<Subgame> reference = referenceMachine.getSubgames();
-				Set<Subgame> test = testMachine.getSubgames();
-
-				if (checkResults(test, reference))
-				{
-					return test;
-				}
-
-				return null;
-			}
-
-			// else
-			return testMachine.getSubgames();
-		}
-
-		throw new UnsupportedOperationException("Subgame operations not supported!");
+		return testMachine.getSubgames();
 	}
 
 	@Override
 	public int getGoalSub(MachineState state, Role role, Subgame subgame) throws GoalDefinitionException
 	{
-		if (testMachine.canPlaySubgames())
-		{
-			if (referenceMachine.canPlaySubgames())
-			{
-				int reference = referenceMachine.getGoal(state, role, subgame);
-				int test = testMachine.getGoal(state, role, subgame);
-
-				if (checkResults(test, reference))
-				{
-					return test;
-				}
-
-				return 0;
-			}
-
-			// else
-			return testMachine.getGoal(state, role, subgame);
-		}
-
-		throw new UnsupportedOperationException("Subgame operations not supported!");
+		return testMachine.getGoalSub(state, role, subgame);
 	}
 
 	@Override
 	public boolean isTerminalSub(MachineState state, Subgame subgame)
 	{
-		if (testMachine.canPlaySubgames())
-		{
-			if (referenceMachine.canPlaySubgames())
-			{
-				boolean reference = referenceMachine.isTerminal(state, subgame);
-				boolean test = testMachine.isTerminal(state, subgame);
-
-				if (checkResults(test, reference))
-				{
-					return test;
-				}
-
-				return false;
-			}
-
-			// else
-			return testMachine.isTerminal(state, subgame);
-		}
-
-		throw new UnsupportedOperationException("Subgame operations not supported!");
+		return testMachine.isTerminalSub(state, subgame);
 	}
 
 	@Override
 	public List<Move> getLegalMovesSub(MachineState state, Role role, Subgame subgame) throws MoveDefinitionException
 	{
-		if (testMachine.canPlaySubgames())
-		{
-			if (referenceMachine.canPlaySubgames())
-			{
-				List<Move> reference = referenceMachine.getLegalMoves(state, role, subgame);
-				List<Move> test = testMachine.getLegalMoves(state, role, subgame);
-
-				if (checkResults(test, reference))
-				{
-					return test;
-				}
-
-				return null;
-			}
-
-			// else
-			return testMachine.getLegalMoves(state, role, subgame);
-		}
-
-		throw new UnsupportedOperationException("Subgame operations not supported!");
+		return testMachine.getLegalMovesSub(state, role, subgame);
 	}
 
 	@Override
 	public MachineState getNextStateSub(MachineState state, List<Move> moves, Subgame subgame)
 			throws TransitionDefinitionException
 	{
-		if (testMachine.canPlaySubgames())
-		{
-			if (referenceMachine.canPlaySubgames())
-			{
-				MachineState reference = referenceMachine.getNextState(state, moves, subgame);
-				MachineState test = testMachine.getNextState(state, moves, subgame);
-
-				if (checkResults(test, reference))
-				{
-					return test;
-				}
-
-				return null;
-			}
-
-			// else
-			return testMachine.getNextState(state, moves, subgame);
-		}
-
-		throw new UnsupportedOperationException("Subgame operations not supported!");
-	}
-
-	@Override
-	public boolean canPlaySubgames()
-	{
-		return testMachine.canPlaySubgames();
+		return testMachine.getNextStateSub(state, moves, subgame);
 	}
 
 	@Override
 	public List<Move> getLegalMovesComplementSub(MachineState state, Role role, Subgame subgame)
 			throws MoveDefinitionException
 	{
-		// TODO Auto-generated method stub
-		return null;
+		return testMachine.getLegalMovesComplementSub(state, role, subgame);
 	}
 
 	@Override
-	public List<Proposition> findBaseInhibitors(Role role)
+	public void findLatches(Role role, int minGoal)
 	{
-		// TODO Auto-generated method stub
-		return null;
-	}
-
-	@Override
-	public Map<Proposition, Boolean> getLatchInhibitors(List<Proposition> inhibitors)
-	{
-		// TODO Auto-generated method stub
-		return null;
+		testMachine.findLatches(role, minGoal);
 	}
 }

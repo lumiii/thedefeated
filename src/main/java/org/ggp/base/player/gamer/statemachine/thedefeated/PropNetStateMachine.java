@@ -27,14 +27,13 @@ import org.ggp.base.util.propnet.factory.OptimizingPropNetFactory;
 import org.ggp.base.util.statemachine.MachineState;
 import org.ggp.base.util.statemachine.Move;
 import org.ggp.base.util.statemachine.Role;
-import org.ggp.base.util.statemachine.StateMachine;
 import org.ggp.base.util.statemachine.exceptions.GoalDefinitionException;
 import org.ggp.base.util.statemachine.exceptions.MoveDefinitionException;
 import org.ggp.base.util.statemachine.exceptions.TransitionDefinitionException;
 import org.ggp.base.util.statemachine.implementation.prover.query.ProverQueryBuilder;
 
 @SuppressWarnings("unused")
-public class PropNetStateMachine extends StateMachine
+public class PropNetStateMachine extends AugmentedStateMachine
 {
 	private static final Logger log = GLog.getLogger(PropNetStateMachine.class);
 	/** The underlying proposition network */
@@ -46,6 +45,8 @@ public class PropNetStateMachine extends StateMachine
 	private Set<Proposition> trueInputProps = Collections.newSetFromMap(new ConcurrentHashMap<Proposition, Boolean>());
 	private Set<Proposition> changedBaseProps = Collections.newSetFromMap(new ConcurrentHashMap<Proposition, Boolean>());
 	private Set<Component> startingComponents = new HashSet<Component>();
+
+	private Map<Proposition, Boolean> latches = null;
 
 	/**
 	 * Initializes the PropNetStateMachine. You should compute the topological
@@ -84,9 +85,17 @@ public class PropNetStateMachine extends StateMachine
 		}
 	}
 
-
 	@Override
-	public List<Proposition> findBaseInhibitors(Role role)
+	public void findLatches(Role role, int minGoal)
+	{
+		if (latches == null)
+		{
+			List<Proposition> baseInhibitors = findBaseInhibitors(role, minGoal);
+			latches = getLatchInhibitors(baseInhibitors);
+		}
+	}
+
+	private List<Proposition> findBaseInhibitors(Role role, int minGoal)
 	{
 		Set<Proposition> goalProps  = propNet.getGoalPropositions().get(role);
 		Set<Proposition> bestGoals  = new HashSet<Proposition>();
@@ -94,7 +103,7 @@ public class PropNetStateMachine extends StateMachine
 		for(Proposition p: goalProps)
 		{
 			int score = getGoalValue(p);
-			if(score == 100)
+			if(score == minGoal)
 			{
 				bestGoals.add(p);
 			}
@@ -253,8 +262,8 @@ public class PropNetStateMachine extends StateMachine
 		return inhibitors;
 
 	}
-	@Override
-	public Map<Proposition, Boolean> getLatchInhibitors(List<Proposition> inhibitors)
+
+	private Map<Proposition, Boolean> getLatchInhibitors(List<Proposition> inhibitors)
 	{
 		Map<Proposition, Boolean> latches = new HashMap<>();
 
@@ -289,7 +298,8 @@ public class PropNetStateMachine extends StateMachine
 			}
 		}
 
-		System.out.println("Latches: " +latches);
+		log.info(GLog.PROPNET,
+				"Latches: " +latches);
 
 		return latches;
 	}
@@ -331,11 +341,13 @@ public class PropNetStateMachine extends StateMachine
 			{
 				if(!truthValues[i])
 				{
+					truthValues[i] = true;
 					markings.add(props[i]);
 					carryOver = false;
 				}
 				else
 				{
+					truthValues[i] = false;
 					markings.remove(props[i]);
 					i++;
 
@@ -993,21 +1005,18 @@ public class PropNetStateMachine extends StateMachine
 	@Override
 	public int getGoalSub(MachineState state, Role role, Subgame subgame) throws GoalDefinitionException
 	{
-		// TODO Auto-generated method stub
 		return getGoal(state, role);
 	}
 
 	@Override
 	public boolean isTerminalSub(MachineState state, Subgame subgame)
 	{
-		// TODO Auto-generated method stub
 		return isTerminal(state);
 	}
 
 	@Override
 	public List<Move> getLegalMovesSub(MachineState state, Role role, Subgame subgame) throws MoveDefinitionException
 	{
-		// TODO Auto-generated method stub
 		List<Move> legals = getLegalMoves(state, role);
 		ArrayList<Move> diff = new ArrayList<Move>(legals);
 		ArrayList<Move> intersect = new ArrayList<Move>(legals);
@@ -1047,17 +1056,9 @@ public class PropNetStateMachine extends StateMachine
 	}
 
 	@Override
-	public boolean canPlaySubgames()
-	{
-		return true;
-	}
-
-
-	@Override
 	public List<Move> getLegalMovesComplementSub(MachineState state, Role role, Subgame subgame)
 			throws MoveDefinitionException
 	{
-		// TODO Auto-generated method stub
 		List<Move> legals = getLegalMoves(state, role);
 		ArrayList<Move> diff = new ArrayList<Move>(legals);
 		Set<Proposition> inputs = subgame.getInputProps();

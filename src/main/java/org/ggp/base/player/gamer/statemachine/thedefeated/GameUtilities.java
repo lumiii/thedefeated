@@ -7,7 +7,6 @@ import java.util.Random;
 import org.ggp.base.util.statemachine.MachineState;
 import org.ggp.base.util.statemachine.Move;
 import org.ggp.base.util.statemachine.Role;
-import org.ggp.base.util.statemachine.StateMachine;
 import org.ggp.base.util.statemachine.exceptions.GoalDefinitionException;
 import org.ggp.base.util.statemachine.exceptions.MoveDefinitionException;
 
@@ -15,12 +14,12 @@ public class GameUtilities
 {
 	public static final int WIN_SCORE = 100;
 
-	private StateMachine stateMachine;
+	private AugmentedStateMachine stateMachine;
 	private Role playerRole;
 	private Random rng;
 	private final int roleSize;
 
-	public GameUtilities(StateMachine stateMachine, Role role)
+	public GameUtilities(AugmentedStateMachine stateMachine, Role role)
 	{
 		this.stateMachine = stateMachine;
 		this.playerRole = role;

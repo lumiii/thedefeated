@@ -16,12 +16,10 @@ import org.ggp.base.player.gamer.statemachine.sample.SampleGamer;
 import org.ggp.base.player.gamer.statemachine.sample.TreeSearchWorker;
 import org.ggp.base.player.gamer.statemachine.thedefeated.node.Node;
 import org.ggp.base.player.gamer.statemachine.thedefeated.node.NodePool;
-import org.ggp.base.util.propnet.architecture.components.Proposition;
 import org.ggp.base.util.statemachine.MachineState;
 import org.ggp.base.util.statemachine.Move;
 import org.ggp.base.util.statemachine.Role;
 import org.ggp.base.util.statemachine.StateMachine;
-import org.ggp.base.util.statemachine.cache.CachedStateMachine;
 import org.ggp.base.util.statemachine.exceptions.GoalDefinitionException;
 import org.ggp.base.util.statemachine.exceptions.MoveDefinitionException;
 import org.ggp.base.util.statemachine.exceptions.TransitionDefinitionException;
@@ -123,19 +121,16 @@ public class MonteCarloTreeSearchGamer extends SampleGamer
 			throws TransitionDefinitionException, MoveDefinitionException, GoalDefinitionException
 	{
 		log.info(GLog.MAIN_THREAD_ACTIVITY, GLog.BANNER + " Beginning meta game " + GLog.BANNER);
-		setMetaTimeout(timeout);
+		setTimeout(timeout);
 
 		timer = new Timer();
 
-
-		StateMachine stateMachine = getStateMachine();
+		AugmentedStateMachine stateMachine = getAugmentedStateMachine();
 		Role role = getRole();
 		subs = stateMachine.getSubgames();
 		log.info(GLog.FACTOR, "Found " + subs.size() + " subgames");
 
-
-		List<Proposition> inhibitors = stateMachine.findBaseInhibitors(role);
-		Map<Proposition, Boolean> latches = stateMachine.getLatchInhibitors(inhibitors);
+//		stateMachine.findLatches(role, 100);
 
 		threadManager.initializeWorkers(stateMachine, role);
 
@@ -166,7 +161,7 @@ public class MonteCarloTreeSearchGamer extends SampleGamer
 			return;
 		}
 
-		StateMachine stateMachine = getStateMachine();
+		AugmentedStateMachine stateMachine = getAugmentedStateMachine();
 		Role role = getRole();
 
 		MachineState state = node.state();
@@ -220,7 +215,7 @@ public class MonteCarloTreeSearchGamer extends SampleGamer
 			return 0;
 		}
 
-		StateMachine stateMachine = getStateMachine();
+		AugmentedStateMachine stateMachine = getAugmentedStateMachine();
 		int minDepth = 1000;
 		Random rand = new Random();
 		int numCharges = 10;
@@ -269,7 +264,7 @@ public class MonteCarloTreeSearchGamer extends SampleGamer
 
 		setTimeout(timeout);
 
-		StateMachine stateMachine = getStateMachine();
+		AugmentedStateMachine stateMachine = getAugmentedStateMachine();
 		MachineState currentState = getCurrentState();
 
 		updateRoot(currentState);
@@ -442,18 +437,6 @@ public class MonteCarloTreeSearchGamer extends SampleGamer
 		}
 	}
 
-	private void setMetaTimeout(long timeout)
-	{
-		if (timeout != 0)
-		{
-			setTimeout(timeout + MachineParameters.META_TIME_PAD);
-		}
-		else
-		{
-			setTimeout(0);
-		}
-	}
-
 	private void setTimeout(long timeout)
 	{
 		if (timeout != 0)
@@ -490,7 +473,12 @@ public class MonteCarloTreeSearchGamer extends SampleGamer
 			return new UnitTestStateMachine(new PropNetStateMachine(), new ProverStateMachine());
 		}
 
-		return new CachedStateMachine(new PropNetStateMachine());
+		return new AugmentedCachedStateMachine(new PropNetStateMachine());
+	}
+
+	private AugmentedStateMachine getAugmentedStateMachine()
+	{
+		return (AugmentedStateMachine)getStateMachine();
 	}
 
 	private static void printParameters()

@@ -4,6 +4,8 @@ import java.util.ArrayList;
 import java.util.List;
 
 import org.apache.logging.log4j.Logger;
+import org.ggp.base.player.gamer.statemachine.thedefeated.AugmentedCachedStateMachine;
+import org.ggp.base.player.gamer.statemachine.thedefeated.AugmentedStateMachine;
 import org.ggp.base.player.gamer.statemachine.thedefeated.GLog;
 import org.ggp.base.player.gamer.statemachine.thedefeated.GameUtilities;
 import org.ggp.base.player.gamer.statemachine.thedefeated.RuntimeParameters;
@@ -13,8 +15,6 @@ import org.ggp.base.player.gamer.statemachine.thedefeated.node.NodePool;
 import org.ggp.base.util.statemachine.MachineState;
 import org.ggp.base.util.statemachine.Move;
 import org.ggp.base.util.statemachine.Role;
-import org.ggp.base.util.statemachine.StateMachine;
-import org.ggp.base.util.statemachine.cache.CachedStateMachine;
 import org.ggp.base.util.statemachine.exceptions.GoalDefinitionException;
 import org.ggp.base.util.statemachine.exceptions.MoveDefinitionException;
 import org.ggp.base.util.statemachine.exceptions.TransitionDefinitionException;
@@ -33,11 +33,12 @@ public class TreeSearchWorker implements Runnable
 	private volatile static int nodesVisited = 0;
 	private volatile static int nodesUpdated = 0;
 	private volatile static int terminalNodeVisited = 0;
+	private volatile static int depthChargeCount = 0;
 
 	private int id;
 	private ThreadManager manager;
 
-	private StateMachine stateMachine;
+	private AugmentedStateMachine stateMachine;
 
 	private Role playerRole;
 
@@ -61,7 +62,7 @@ public class TreeSearchWorker implements Runnable
 		nodesUpdated = 0;
 	}
 
-	public void init(StateMachine stateMachine, Role role)
+	public void init(AugmentedStateMachine stateMachine, Role role)
 	{
 		// disable caching behaviour if unittesting
 		// so we can hit our propagation routines every time
@@ -73,7 +74,7 @@ public class TreeSearchWorker implements Runnable
 		// but this could cause memory blowup
 		if (!RuntimeParameters.UNITTEST_PROPNET)
 		{
-			this.stateMachine = new CachedStateMachine(stateMachine);
+			this.stateMachine = new AugmentedCachedStateMachine(stateMachine);
 		}
 		else
 		{
@@ -175,6 +176,8 @@ public class TreeSearchWorker implements Runnable
 					{
 						MachineState terminalState = stateMachine.performDepthCharge(node.state(), minDepth, node.subgame(), null);
 
+						depthChargeCount++;
+
 						if(stateMachine.isTerminal(terminalState, node.subgame()))
 						{
 							totalScore += stateMachine.getGoal(terminalState, playerRole, node.subgame());
@@ -241,6 +244,7 @@ public class TreeSearchWorker implements Runnable
 		log.info(GLog.NODE_STATS, "Nodes visited: " + nodesVisited);
 		log.info(GLog.NODE_STATS, "Terminal nodes visited: " + terminalNodeVisited);
 		log.info(GLog.NODE_STATS, "Nodes updated: " + nodesUpdated);
+		log.info(GLog.NODE_STATS, "Depth charges: " + depthChargeCount);
 	}
 
 	private Node select(Node node)

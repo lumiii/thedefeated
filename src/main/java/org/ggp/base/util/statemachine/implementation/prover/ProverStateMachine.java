@@ -2,16 +2,13 @@ package org.ggp.base.util.statemachine.implementation.prover;
 
 import java.util.HashSet;
 import java.util.List;
-import java.util.Map;
 import java.util.Set;
 
-import org.ggp.base.player.gamer.statemachine.thedefeated.Subgame;
 import org.ggp.base.util.gdl.grammar.Gdl;
 import org.ggp.base.util.gdl.grammar.GdlConstant;
 import org.ggp.base.util.gdl.grammar.GdlRelation;
 import org.ggp.base.util.gdl.grammar.GdlSentence;
 import org.ggp.base.util.logging.GamerLogger;
-import org.ggp.base.util.propnet.architecture.components.Proposition;
 import org.ggp.base.util.prover.Prover;
 import org.ggp.base.util.prover.aima.AimaProver;
 import org.ggp.base.util.statemachine.MachineState;
@@ -138,63 +135,4 @@ public class ProverStateMachine extends StateMachine
     {
         return prover.prove(ProverQueryBuilder.getTerminalQuery(), ProverQueryBuilder.getContext(state));
     }
-
-	@Override
-	public Set<Subgame> getSubgames()
-	{
-		throw new UnsupportedOperationException("Subgame operations not supported!");
-	}
-
-	@Override
-	public int getGoalSub(MachineState state, Role role, Subgame subgame) throws GoalDefinitionException
-	{
-		throw new UnsupportedOperationException("Subgame operations not supported!");
-	}
-
-	@Override
-	public boolean isTerminalSub(MachineState state, Subgame subgame)
-	{
-		throw new UnsupportedOperationException("Subgame operations not supported!");
-	}
-
-	@Override
-	public List<Move> getLegalMovesSub(MachineState state, Role role, Subgame subgame) throws MoveDefinitionException
-	{
-		throw new UnsupportedOperationException("Subgame operations not supported!");
-	}
-
-	@Override
-	public MachineState getNextStateSub(MachineState state, List<Move> moves, Subgame subgame)
-			throws TransitionDefinitionException
-	{
-		throw new UnsupportedOperationException("Subgame operations not supported!");
-	}
-
-	@Override
-	public boolean canPlaySubgames()
-	{
-		return false;
-	}
-
-	@Override
-	public List<Move> getLegalMovesComplementSub(MachineState state, Role role, Subgame subgame)
-			throws MoveDefinitionException
-	{
-		// TODO Auto-generated method stub
-		return null;
-	}
-
-	@Override
-	public List<Proposition> findBaseInhibitors(Role role)
-	{
-		// TODO Auto-generated method stub
-		return null;
-	}
-
-	@Override
-	public Map<Proposition, Boolean> getLatchInhibitors(List<Proposition> inhibitors)
-	{
-		// TODO Auto-generated method stub
-		return null;
-	}
 }

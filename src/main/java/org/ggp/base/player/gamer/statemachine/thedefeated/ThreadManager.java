@@ -4,7 +4,6 @@ import org.ggp.base.player.gamer.statemachine.sample.TreeSearchWorker;
 import org.ggp.base.player.gamer.statemachine.thedefeated.node.Node;
 import org.ggp.base.player.gamer.statemachine.thedefeated.node.NodePool;
 import org.ggp.base.util.statemachine.Role;
-import org.ggp.base.util.statemachine.StateMachine;
 import org.ggp.base.util.statemachine.exceptions.MoveDefinitionException;
 import org.ggp.base.util.statemachine.exceptions.TransitionDefinitionException;
 
@@ -36,7 +35,7 @@ public class ThreadManager
 		oldRootReference = 0;
 	}
 
-	public void initializeWorkers(StateMachine stateMachine, Role role)
+	public void initializeWorkers(AugmentedStateMachine stateMachine, Role role)
 	{
 		TreeSearchWorker.globalInit();
 

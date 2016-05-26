@@ -1,23 +1,24 @@
-package org.ggp.base.util.statemachine.cache;
+package org.ggp.base.player.gamer.statemachine.thedefeated;
 
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 import org.ggp.base.util.gdl.grammar.Gdl;
 import org.ggp.base.util.statemachine.MachineState;
 import org.ggp.base.util.statemachine.Move;
 import org.ggp.base.util.statemachine.Role;
-import org.ggp.base.util.statemachine.StateMachine;
+import org.ggp.base.util.statemachine.cache.TtlCache;
 import org.ggp.base.util.statemachine.exceptions.GoalDefinitionException;
 import org.ggp.base.util.statemachine.exceptions.MoveDefinitionException;
 import org.ggp.base.util.statemachine.exceptions.TransitionDefinitionException;
 
 import com.google.common.collect.ImmutableList;
 
-public final class CachedStateMachine extends StateMachine
+public final class AugmentedCachedStateMachine extends AugmentedStateMachine
 {
-    private final StateMachine backingStateMachine;
+    private final AugmentedStateMachine backingStateMachine;
     private final TtlCache<MachineState, Entry> ttlCache;
 
     private final class Entry
@@ -38,9 +39,9 @@ public final class CachedStateMachine extends StateMachine
         }
     }
 
-    public CachedStateMachine(StateMachine backingStateMachine)
+    public AugmentedCachedStateMachine(AugmentedStateMachine backingStateMachine)
     {
-        this.backingStateMachine = backingStateMachine;
+        this.backingStateMachine = (AugmentedStateMachine) backingStateMachine;
         ttlCache = new TtlCache<MachineState, Entry>(1);
     }
 
@@ -157,4 +158,54 @@ public final class CachedStateMachine extends StateMachine
         // TODO(schreib): Should this be cached as well?
         return backingStateMachine.getInitialState();
     }
+
+	@Override
+	public Set<Subgame> getSubgames()
+	{
+		// TODO: cache?
+		return backingStateMachine.getSubgames();
+	}
+
+	@Override
+	protected int getGoalSub(MachineState state, Role role, Subgame subgame) throws GoalDefinitionException
+	{
+		// TODO: cache?
+		return backingStateMachine.getGoalSub(state, role, subgame);
+	}
+
+	@Override
+	protected boolean isTerminalSub(MachineState state, Subgame subgame)
+	{
+		// TODO: cache?
+		return backingStateMachine.isTerminalSub(state, subgame);
+	}
+
+	@Override
+	protected List<Move> getLegalMovesSub(MachineState state, Role role, Subgame subgame) throws MoveDefinitionException
+	{
+		// TODO: cache?
+		return backingStateMachine.getLegalMovesSub(state, role, subgame);
+	}
+
+	@Override
+	protected List<Move> getLegalMovesComplementSub(MachineState state, Role role, Subgame subgame)
+			throws MoveDefinitionException
+	{
+		// TODO: cache?
+		return backingStateMachine.getLegalMovesComplementSub(state, role, subgame);
+	}
+
+	@Override
+	protected MachineState getNextStateSub(MachineState state, List<Move> moves, Subgame subgame)
+			throws TransitionDefinitionException
+	{
+		// TODO: cache?
+		return backingStateMachine.getNextStateSub(state, moves, subgame);
+	}
+
+	@Override
+	public void findLatches(Role role, int minGoal)
+	{
+		backingStateMachine.findLatches(role, minGoal);
+	}
 }
