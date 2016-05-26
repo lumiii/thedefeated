@@ -83,35 +83,6 @@ public class GameUtilities
 		return moveList.get(randomIndex);
 	}
 
-	public List<List<Move>> findAllMoves(MachineState state, Subgame subgame) throws MoveDefinitionException
-	{
-		List<List<Move>> moves = new ArrayList<List<Move>>();
-		List<Role> roles = stateMachine.getRoles();
-
-		moves.add(new ArrayList<Move>());
-
-		for(Role r : roles)
-		{
-			List<Move> roleMoves = stateMachine.getLegalMoves(state, r, subgame);
-			List<List<Move>> newMoves = new ArrayList<List<Move>>();
-
-			for (List<Move> l : moves)
-			{
-				for(Move m : roleMoves)
-				{
-					ArrayList<Move> tempList = new ArrayList<Move>(l);
-					tempList.add(m);
-					newMoves.add(tempList);
-				}
-			}
-
-			moves = newMoves;
-		}
-
-		return moves;
-	}
-
-
 	public List<List<Move>> findAllMoves(MachineState state) throws MoveDefinitionException
 	{
 		List<List<Move>> moves = new ArrayList<List<Move>>();

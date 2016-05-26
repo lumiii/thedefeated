@@ -1,6 +1,5 @@
 package org.ggp.base.player.gamer.statemachine.sample;
 
-import java.util.ArrayList;
 import java.util.List;
 
 import org.apache.logging.log4j.Logger;
@@ -45,9 +44,6 @@ public class TreeSearchWorker implements Runnable
 	private Node root;
 	private Node newRoot;
 
-	private int minDepth;
-	private int newMinDepth;
-
 	private GameUtilities utility;
 
 	public TreeSearchWorker(int id, ThreadManager manager)
@@ -84,8 +80,6 @@ public class TreeSearchWorker implements Runnable
 		this.playerRole = role;
 		this.root = null;
 		this.newRoot = null;
-		this.minDepth = 0;
-		this.newMinDepth = 0;
 		this.utility = new GameUtilities(stateMachine, role);
 	}
 
@@ -103,13 +97,6 @@ public class TreeSearchWorker implements Runnable
 		this.newRoot = root;
 	}
 
-
-	public void setMinDepth(int depth)
-	{
-		this.newMinDepth = depth;
-	}
-
-
 	private void update()
 	{
 		if (this.root != this.newRoot)
@@ -119,11 +106,6 @@ public class TreeSearchWorker implements Runnable
 
 			log.info(GLog.THREAD_ACTIVITY,
 					"Thread active");
-		}
-
-		if (this.minDepth != this.newMinDepth)
-		{
-			this.minDepth = this.newMinDepth;
 		}
 	}
 
@@ -163,25 +145,20 @@ public class TreeSearchWorker implements Runnable
 		{
 			nodesVisited++;
 
-			if (!stateMachine.isTerminal(node.state(), node.subgame()))
+			if (!stateMachine.isTerminal(node.state()))
 			{
 				expand(node);
 
 				int visits = 0;
-
 				int totalScore = 0;
 				for (int i = 0; i < RuntimeParameters.DEPTH_CHARGE_COUNT; i++)
 				{
 					try
 					{
-						MachineState terminalState = stateMachine.performDepthCharge(node.state(), minDepth, node.subgame(), null);
+						MachineState terminalState = stateMachine.performDepthCharge(node.state(), null);
 
 						depthChargeCount++;
-
-						if(stateMachine.isTerminal(terminalState, node.subgame()))
-						{
-							totalScore += stateMachine.getGoal(terminalState, playerRole, node.subgame());
-						}
+						totalScore += stateMachine.getGoal(terminalState, playerRole);
 
 						// TODO: verify whether this is the count we want:
 						// if a node explored is not terminal within the counted depth, we just say it has a score of 0?
@@ -201,7 +178,7 @@ public class TreeSearchWorker implements Runnable
 			{
 				try
 				{
-					int score = stateMachine.getGoal(node.state(), playerRole, node.subgame());
+					int score = stateMachine.getGoal(node.state(), playerRole);
 
 					terminalNodeVisited++;
 
@@ -325,23 +302,14 @@ public class TreeSearchWorker implements Runnable
 	@SuppressWarnings("unused")
 	private void expand(Node node) throws MoveDefinitionException, TransitionDefinitionException
 	{
-		List<List<Move>> moves;
-
-		if(!RuntimeParameters.FACTOR_SUBGAME ||  node.subgame() != null)
-		{
-			moves = utility.findAllMoves(node.state(), node.subgame());
-		}
-		else
-		{
-			moves = new ArrayList<List<Move>>();
-		}
+		List<List<Move>> moves = utility.findAllMoves(node.state());
 
 		for (List<Move> m : moves)
 		{
-			MachineState newState = stateMachine.getNextState(node.state(), m, node.subgame());
+			MachineState newState = stateMachine.getNextState(node.state(), m);
 			boolean maxNode = utility.playerHasMoves(newState);
 
-			Node newNode = NodePool.newNode(node, newState, m, maxNode, node.subgame());
+			Node newNode = NodePool.newNode(node, newState, m, maxNode);
 
 			// just do an early return because there's no possible way for us to get
 			// more memory out of this - hopefully some will be freed up next time

@@ -1,7 +1,6 @@
 package org.ggp.base.player.gamer.statemachine.thedefeated;
 
 import java.util.List;
-import java.util.Set;
 
 import org.apache.logging.log4j.Logger;
 import org.ggp.base.util.gdl.grammar.Gdl;
@@ -176,44 +175,6 @@ public class UnitTestStateMachine extends AugmentedStateMachine
 	private void checkException(Exception e)
 	{
 		log.catching(e);
-	}
-
-	@Override
-	public Set<Subgame> getSubgames()
-	{
-		return testMachine.getSubgames();
-	}
-
-	@Override
-	public int getGoalSub(MachineState state, Role role, Subgame subgame) throws GoalDefinitionException
-	{
-		return testMachine.getGoalSub(state, role, subgame);
-	}
-
-	@Override
-	public boolean isTerminalSub(MachineState state, Subgame subgame)
-	{
-		return testMachine.isTerminalSub(state, subgame);
-	}
-
-	@Override
-	public List<Move> getLegalMovesSub(MachineState state, Role role, Subgame subgame) throws MoveDefinitionException
-	{
-		return testMachine.getLegalMovesSub(state, role, subgame);
-	}
-
-	@Override
-	public MachineState getNextStateSub(MachineState state, List<Move> moves, Subgame subgame)
-			throws TransitionDefinitionException
-	{
-		return testMachine.getNextStateSub(state, moves, subgame);
-	}
-
-	@Override
-	public List<Move> getLegalMovesComplementSub(MachineState state, Role role, Subgame subgame)
-			throws MoveDefinitionException
-	{
-		return testMachine.getLegalMovesComplementSub(state, role, subgame);
 	}
 
 	@Override

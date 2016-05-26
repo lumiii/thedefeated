@@ -84,7 +84,7 @@ public class ThreadManager
 		}
 	}
 
-	public void updateWorkers(Node root, int minDepth) throws MoveDefinitionException, TransitionDefinitionException
+	public void updateWorkers(Node root) throws MoveDefinitionException, TransitionDefinitionException
 	{
 		oldRoot = newRoot;
 		oldRootReference = newRootReference;
@@ -95,7 +95,6 @@ public class ThreadManager
 		for (int i = 0; i < size; i++)
 		{
 			workers[i].setRoot(root);
-			workers[i].setMinDepth(minDepth);
 		}
 	}
 }

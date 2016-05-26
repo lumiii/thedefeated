@@ -1,13 +1,10 @@
 package org.ggp.base.player.gamer.statemachine.thedefeated;
 
-import java.util.ArrayList;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
-import java.util.Random;
-import java.util.Set;
 import java.util.Timer;
 import java.util.TimerTask;
 
@@ -38,7 +35,6 @@ public class MonteCarloTreeSearchGamer extends SampleGamer
 	private Timer timer = null;
 	private ThreadTimer threadTimer = null;
 	private Object lock = null;
-	private Set<Subgame> subs;
 
 	static
 	{
@@ -127,8 +123,6 @@ public class MonteCarloTreeSearchGamer extends SampleGamer
 
 		AugmentedStateMachine stateMachine = getAugmentedStateMachine();
 		Role role = getRole();
-		subs = stateMachine.getSubgames();
-		log.info(GLog.FACTOR, "Found " + subs.size() + " subgames");
 
 //		stateMachine.findLatches(role, 100);
 
@@ -139,11 +133,9 @@ public class MonteCarloTreeSearchGamer extends SampleGamer
 		childStates.clear();
 
 		updateRoot(getCurrentState());
-		expandWithSubgame(root);
 		childStates.put(root.state(), root);
 
-		int minDepth = findMinDepth(stateMachine.getInitialState());
-		threadManager.updateWorkers(root, minDepth);
+		threadManager.updateWorkers(root);
 
 		threadManager.startWorkers();
 
@@ -151,109 +143,6 @@ public class MonteCarloTreeSearchGamer extends SampleGamer
 
 		setTimeout(0);
 		log.info(GLog.MAIN_THREAD_ACTIVITY, GLog.BANNER + " Ending meta game " + GLog.BANNER);
-	}
-
-	private void expandWithSubgame(Node node)
-			throws TransitionDefinitionException, MoveDefinitionException
-	{
-		if (!RuntimeParameters.FACTOR_SUBGAME)
-		{
-			return;
-		}
-
-		AugmentedStateMachine stateMachine = getAugmentedStateMachine();
-		Role role = getRole();
-
-		MachineState state = node.state();
-
-		List<List<Move>> moves = utility.findAllMoves(state);
-		int roleIndex = stateMachine.getRoleIndices().get(role);
-		for (List<Move> m : moves)
-		{
-			MachineState newState = stateMachine.getNextState(state, m);
-			boolean maxNode = utility.playerHasMoves(newState);
-			boolean found = false;
-			for (Subgame sub : subs)
-			{
-				Move playerMove = m.get(roleIndex);
-				Set<Move> inputMoves = sub.getInputMoves();
-				if (inputMoves.contains(playerMove))
-				{
-					Node newNode = NodePool.newNode(node, newState, m, maxNode, sub);
-					node.children().add(newNode);
-					found = true;
-					log.info(GLog.FACTOR, "Subgame found");
-				}
-			}
-
-			if (!found)
-			{
-				log.info(GLog.FACTOR, "No subgame for move found");
-			}
-		}
-
-		node.visitIncrement(1);
-		node.select();
-		if (node.children().isEmpty())
-		{
-			for (List<Move> m : moves)
-			{
-				MachineState newState = stateMachine.getNextState(state, m);
-				boolean maxNode = utility.playerHasMoves(newState);
-				Node newNode = NodePool.newNode(node, newState, m, maxNode, null);
-				node.children().add(newNode);
-
-				expandWithSubgame(newNode);
-			}
-		}
-	}
-
-	private int findMinDepth(MachineState currentState) throws MoveDefinitionException, TransitionDefinitionException
-	{
-		if (!RuntimeParameters.FACTOR_SUBGAME)
-		{
-			return 0;
-		}
-
-		AugmentedStateMachine stateMachine = getAugmentedStateMachine();
-		int minDepth = 1000;
-		Random rand = new Random();
-		int numCharges = 10;
-		for (Subgame sub : subs)
-		{
-			for (int i = 0; i < numCharges; i++)
-			{
-				int depth = 0;
-				MachineState state = new MachineState(currentState.getContents());
-				while (!stateMachine.isTerminal(state, sub))
-				{
-					List<Move> randMove = new ArrayList<Move>();
-					for (Role r : stateMachine.getRoles())
-					{
-						if (r.equals(getRole()))
-						{
-							List<Move> moves = stateMachine.getLegalMovesComplement(state, r, sub);
-							Move m = moves.get(rand.nextInt(moves.size()));
-							randMove.add(m);
-						}
-						else
-						{
-							List<Move> moves = stateMachine.getLegalMoves(state, r, sub);
-							Move m = moves.get(rand.nextInt(moves.size()));
-							randMove.add(m);
-						}
-					}
-					state = stateMachine.getNextState(state, randMove, sub);
-					depth++;
-				}
-				if (depth < minDepth)
-				{
-					minDepth = depth;
-				}
-			}
-
-		}
-		return minDepth;
 	}
 
 	@Override
@@ -269,7 +158,7 @@ public class MonteCarloTreeSearchGamer extends SampleGamer
 
 		updateRoot(currentState);
 
-		threadManager.updateWorkers(root, findMinDepth(getCurrentState()));
+		threadManager.updateWorkers(root);
 
 		for (Node child : root.children())
 		{
@@ -405,7 +294,7 @@ public class MonteCarloTreeSearchGamer extends SampleGamer
 	{
 		if (root == null)
 		{
-			root = NodePool.newNode(null, currentState, null, true, null);
+			root = NodePool.newNode(null, currentState, null, true);
 			if (root == null)
 			{
 				throw new IllegalStateException("No memory can be obtained for even one node");
@@ -423,14 +312,9 @@ public class MonteCarloTreeSearchGamer extends SampleGamer
 			else
 			{
 				root.orphan();
-				root = NodePool.newNode(null, currentState, null, true, null);
+				root = NodePool.newNode(null, currentState, null, true);
 				log.error(GLog.ERRORS,
 						"Missed finding the tree - investigate");
-
-				expandWithSubgame(root);
-
-				root.visitIncrement(1);
-				root.select();
 			}
 
 			childStates.clear();

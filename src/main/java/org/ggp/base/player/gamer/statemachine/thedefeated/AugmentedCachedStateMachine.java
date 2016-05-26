@@ -3,7 +3,6 @@ package org.ggp.base.player.gamer.statemachine.thedefeated;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
 
 import org.ggp.base.util.gdl.grammar.Gdl;
 import org.ggp.base.util.statemachine.MachineState;
@@ -158,50 +157,6 @@ public final class AugmentedCachedStateMachine extends AugmentedStateMachine
         // TODO(schreib): Should this be cached as well?
         return backingStateMachine.getInitialState();
     }
-
-	@Override
-	public Set<Subgame> getSubgames()
-	{
-		// TODO: cache?
-		return backingStateMachine.getSubgames();
-	}
-
-	@Override
-	protected int getGoalSub(MachineState state, Role role, Subgame subgame) throws GoalDefinitionException
-	{
-		// TODO: cache?
-		return backingStateMachine.getGoalSub(state, role, subgame);
-	}
-
-	@Override
-	protected boolean isTerminalSub(MachineState state, Subgame subgame)
-	{
-		// TODO: cache?
-		return backingStateMachine.isTerminalSub(state, subgame);
-	}
-
-	@Override
-	protected List<Move> getLegalMovesSub(MachineState state, Role role, Subgame subgame) throws MoveDefinitionException
-	{
-		// TODO: cache?
-		return backingStateMachine.getLegalMovesSub(state, role, subgame);
-	}
-
-	@Override
-	protected List<Move> getLegalMovesComplementSub(MachineState state, Role role, Subgame subgame)
-			throws MoveDefinitionException
-	{
-		// TODO: cache?
-		return backingStateMachine.getLegalMovesComplementSub(state, role, subgame);
-	}
-
-	@Override
-	protected MachineState getNextStateSub(MachineState state, List<Move> moves, Subgame subgame)
-			throws TransitionDefinitionException
-	{
-		// TODO: cache?
-		return backingStateMachine.getNextStateSub(state, moves, subgame);
-	}
 
 	@Override
 	public void findLatches(Role role, int minGoal)

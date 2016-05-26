@@ -6,7 +6,6 @@ import java.util.concurrent.ConcurrentLinkedQueue;
 
 import org.ggp.base.player.gamer.statemachine.thedefeated.GLog;
 import org.ggp.base.player.gamer.statemachine.thedefeated.MachineParameters;
-import org.ggp.base.player.gamer.statemachine.thedefeated.Subgame;
 import org.ggp.base.util.statemachine.MachineState;
 import org.ggp.base.util.statemachine.Move;
 
@@ -45,20 +44,20 @@ public class NodePool
 		queue.add(node);
 	}
 
-	public static Node newNode(Node par, MachineState stat, List<Move> m, boolean playerHasChoice, Subgame sub)
+	public static Node newNode(Node par, MachineState stat, List<Move> m, boolean playerHasChoice)
 	{
-		Node node = getNode(par, stat, m, playerHasChoice, sub);
+		Node node = getNode(par, stat, m, playerHasChoice);
 
 		if (node == null && canGrow())
 		{
 			allocateNodes(MachineParameters.LOW_NODE_THRESHOLD);
-			node = getNode(par, stat, m, playerHasChoice, sub);
+			node = getNode(par, stat, m, playerHasChoice);
 		}
 
 		return node;
 	}
 
-	private static Node getNode(Node par, MachineState stat, List<Move> m, boolean playerHasChoice, Subgame sub)
+	private static Node getNode(Node par, MachineState stat, List<Move> m, boolean playerHasChoice)
 	{
 		if (queue.isEmpty())
 		{
@@ -72,7 +71,7 @@ public class NodePool
 			queue.addAll(node.children());
 			// this clears the children - the queue should
 			// be the only thing that has references to the child nodes now
-			node.set(par, stat, m, playerHasChoice, sub);
+			node.set(par, stat, m, playerHasChoice);
 		}
 
 		return node;

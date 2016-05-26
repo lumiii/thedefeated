@@ -20,8 +20,6 @@ public class RuntimeParameters
 	public static final boolean LOG_FACTOR = true;
 	public static final boolean LOG_MEMORY = true;
 
-	public static final boolean FACTOR_SUBGAME = false;
-
 	public static final boolean UNITTEST_PROPNET = false;
 	public static final boolean OUTPUT_GRAPH_FILE = false;
 	// this value must be true if output_graph_file is true, otherwise

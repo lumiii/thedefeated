@@ -6,7 +6,6 @@ import java.util.concurrent.ConcurrentLinkedQueue;
 
 import org.ggp.base.player.gamer.statemachine.sample.TreeSearchWorker;
 import org.ggp.base.player.gamer.statemachine.thedefeated.RuntimeParameters;
-import org.ggp.base.player.gamer.statemachine.thedefeated.Subgame;
 import org.ggp.base.util.statemachine.MachineState;
 import org.ggp.base.util.statemachine.Move;
 
@@ -24,14 +23,13 @@ public class Node
 	private AbstractQueue<Node> children;
 	private MachineState state;
 	private List<Move> move;
-	private Subgame subgame;
 
 	protected Node()
 	{
 		children = new ConcurrentLinkedQueue<Node>();
 	}
 
-	protected void set(Node par, MachineState stat, List<Move> m, boolean playerHasChoice, Subgame sub)
+	protected void set(Node par, MachineState stat, List<Move> m, boolean playerHasChoice)
 	{
 		utility = 0;
 		visit = 0;
@@ -41,7 +39,6 @@ public class Node
 		children.clear();
 		state = stat;
 		move = m;
-		subgame = sub;
 	}
 
 	public void lockToMax()
@@ -54,11 +51,6 @@ public class Node
 	{
 		visit = LOCKED;
 		utility = TreeSearchWorker.LOSE_SCORE;
-	}
-
-	public Subgame subgame()
-	{
-		return subgame;
 	}
 
 	public boolean isMaxNode()
