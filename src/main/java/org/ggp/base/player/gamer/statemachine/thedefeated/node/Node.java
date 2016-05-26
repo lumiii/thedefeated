@@ -4,8 +4,8 @@ import java.util.AbstractQueue;
 import java.util.List;
 import java.util.concurrent.ConcurrentLinkedQueue;
 
-import org.ggp.base.player.gamer.statemachine.sample.TreeSearchWorker;
 import org.ggp.base.player.gamer.statemachine.thedefeated.RuntimeParameters;
+import org.ggp.base.player.gamer.statemachine.thedefeated.TreeSearchWorker;
 import org.ggp.base.util.statemachine.MachineState;
 import org.ggp.base.util.statemachine.Move;
 

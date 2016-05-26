@@ -1,14 +1,8 @@
-package org.ggp.base.player.gamer.statemachine.sample;
+package org.ggp.base.player.gamer.statemachine.thedefeated;
 
 import java.util.List;
 
 import org.apache.logging.log4j.Logger;
-import org.ggp.base.player.gamer.statemachine.thedefeated.AugmentedCachedStateMachine;
-import org.ggp.base.player.gamer.statemachine.thedefeated.AugmentedStateMachine;
-import org.ggp.base.player.gamer.statemachine.thedefeated.GLog;
-import org.ggp.base.player.gamer.statemachine.thedefeated.GameUtilities;
-import org.ggp.base.player.gamer.statemachine.thedefeated.RuntimeParameters;
-import org.ggp.base.player.gamer.statemachine.thedefeated.ThreadManager;
 import org.ggp.base.player.gamer.statemachine.thedefeated.node.Node;
 import org.ggp.base.player.gamer.statemachine.thedefeated.node.NodePool;
 import org.ggp.base.util.statemachine.MachineState;

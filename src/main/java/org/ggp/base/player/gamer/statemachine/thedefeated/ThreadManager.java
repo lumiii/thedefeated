@@ -1,6 +1,5 @@
 package org.ggp.base.player.gamer.statemachine.thedefeated;
 
-import org.ggp.base.player.gamer.statemachine.sample.TreeSearchWorker;
 import org.ggp.base.player.gamer.statemachine.thedefeated.node.Node;
 import org.ggp.base.player.gamer.statemachine.thedefeated.node.NodePool;
 import org.ggp.base.util.statemachine.Role;

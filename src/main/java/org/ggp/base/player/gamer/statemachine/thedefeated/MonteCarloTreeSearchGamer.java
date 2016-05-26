@@ -10,7 +10,6 @@ import java.util.TimerTask;
 
 import org.apache.logging.log4j.Logger;
 import org.ggp.base.player.gamer.statemachine.sample.SampleGamer;
-import org.ggp.base.player.gamer.statemachine.sample.TreeSearchWorker;
 import org.ggp.base.player.gamer.statemachine.thedefeated.node.Node;
 import org.ggp.base.player.gamer.statemachine.thedefeated.node.NodePool;
 import org.ggp.base.util.statemachine.MachineState;
