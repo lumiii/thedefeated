@@ -168,8 +168,7 @@ public class PropNetStateMachine extends AugmentedStateMachine
 		{
 			int score1 = arg0.getValue();
 			int score2 = arg1.getValue();
-			// reverse the order, we want the highest goals first
-			return Integer.compare(score2, score1);
+			return Integer.compare(score1, score2);
 		}
 	}
 
@@ -188,9 +187,9 @@ public class PropNetStateMachine extends AugmentedStateMachine
 			}
 		}
 
-		// sort it in descending order
 		if (goals.size() > 1)
 		{
+			// sort it in ascending order
 			goals.sort(ScoreComparator.comparator);
 		}
 
@@ -203,10 +202,9 @@ public class PropNetStateMachine extends AugmentedStateMachine
 	{
 		Map<Proposition, Boolean> inhibitors = new HashMap<>();
 
-		// find all things, that when is true or false, can singularly
-		// make the goal false
-
-		Queue<Entry<Component, Boolean>> ancestors = new LinkedList<>();
+		// using a stack because that will allow us to prioritize the
+		// ancestors of the best goals first
+		Stack<Entry<Component, Boolean>> ancestors = new Stack<>();
 		Set<Component> visited = new HashSet<>();
 
 		// start by finding what makes goals false
@@ -218,7 +216,7 @@ public class PropNetStateMachine extends AugmentedStateMachine
 
 		while (!ancestors.isEmpty())
 		{
-			Entry<Component, Boolean> entry = ancestors.remove();
+			Entry<Component, Boolean> entry = ancestors.pop();
 			Component component = entry.getKey();
 			boolean inhibitingValue = entry.getValue();
 
