@@ -1,12 +1,15 @@
 package org.ggp.base.player.gamer.statemachine.thedefeated;
 
+import java.util.AbstractMap.SimpleImmutableEntry;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
+import java.util.Map.Entry;
 import java.util.Queue;
 import java.util.Set;
 import java.util.Stack;
@@ -20,8 +23,6 @@ import org.ggp.base.util.gdl.grammar.GdlSentence;
 import org.ggp.base.util.propnet.architecture.Component;
 import org.ggp.base.util.propnet.architecture.Component.Type;
 import org.ggp.base.util.propnet.architecture.PropNet;
-import org.ggp.base.util.propnet.architecture.components.And;
-import org.ggp.base.util.propnet.architecture.components.Or;
 import org.ggp.base.util.propnet.architecture.components.Proposition;
 import org.ggp.base.util.propnet.factory.OptimizingPropNetFactory;
 import org.ggp.base.util.statemachine.MachineState;
@@ -43,10 +44,12 @@ public class PropNetStateMachine extends AugmentedStateMachine
 
 	private Set<Proposition> trueBaseProps = Collections.newSetFromMap(new ConcurrentHashMap<Proposition, Boolean>());
 	private Set<Proposition> trueInputProps = Collections.newSetFromMap(new ConcurrentHashMap<Proposition, Boolean>());
-	private Set<Proposition> changedBaseProps = Collections.newSetFromMap(new ConcurrentHashMap<Proposition, Boolean>());
+	private Set<Proposition> changedBaseProps = Collections
+			.newSetFromMap(new ConcurrentHashMap<Proposition, Boolean>());
 	private Set<Component> startingComponents = new HashSet<Component>();
 
-	private Map<Proposition, Boolean> latches = null;
+	private Set<GdlSentence> trueLatches = null;
+	private Set<GdlSentence> falseLatches = null;
 
 	/**
 	 * Initializes the PropNetStateMachine. You should compute the topological
@@ -58,21 +61,18 @@ public class PropNetStateMachine extends AugmentedStateMachine
 	{
 		try
 		{
-			log.info(GLog.PROPNET,
-					"Initializing prop net");
+			log.info(GLog.PROPNET, "Initializing prop net");
 
 			propNet = OptimizingPropNetFactory.create(description);
 
 			populateStartingComponents();
 
-			log.info(GLog.PROPNET,
-					"Size: " + propNet.getComponents().size());
+			log.info(GLog.PROPNET, "Size: " + propNet.getComponents().size());
 
 			if (RuntimeParameters.OUTPUT_GRAPH_FILE)
 			{
 				String filePath = MachineParameters.outputFilename();
-				log.info(GLog.PROPNET,
-						"Logging graph output to:\n" + filePath);
+				log.info(GLog.PROPNET, "Logging graph output to:\n" + filePath);
 
 				propNet.renderToFile(filePath);
 			}
@@ -88,216 +88,345 @@ public class PropNetStateMachine extends AugmentedStateMachine
 	@Override
 	public void findLatches(Role role, int minGoal)
 	{
-		if (latches == null)
+		if (trueLatches == null || falseLatches == null)
 		{
-			List<Proposition> baseInhibitors = findBaseInhibitors(role, minGoal);
-			latches = getLatchInhibitors(baseInhibitors);
+			Map<Proposition, Boolean> baseInhibitors = findInhibitorsForRole(role, minGoal);
+			Map<Proposition, Boolean> latches = getLatchInhibitors(baseInhibitors);
+
+			trueLatches = new HashSet<>();
+			falseLatches = new HashSet<>();
+
+			for (Entry<Proposition, Boolean> entry : latches.entrySet())
+			{
+				Proposition proposition = entry.getKey();
+				if (entry.getValue())
+				{
+					trueLatches.add(proposition.getName());
+				}
+				else
+				{
+					falseLatches.add(proposition.getName());
+				}
+			}
 		}
 	}
 
-	private List<Proposition> findBaseInhibitors(Role role, int minGoal)
+	@Override
+	public boolean isDeadState(MachineState state)
 	{
-		Set<Proposition> goalProps  = propNet.getGoalPropositions().get(role);
-		Set<Proposition> bestGoals  = new HashSet<Proposition>();
+		if (trueLatches == null || falseLatches == null)
+		{
+			return false;
+		}
 
-		for(Proposition p: goalProps)
+		Set<GdlSentence> stateSentences = state.getContents();
+		boolean foundTrueLatch = sentenceIntersect(stateSentences, trueLatches);
+
+		if (foundTrueLatch)
+		{
+			return true;
+		}
+
+		for (GdlSentence sentence : falseLatches)
+		{
+			if (!stateSentences.contains(sentence))
+			{
+				return true;
+			}
+		}
+
+		return false;
+	}
+
+	private boolean sentenceIntersect(Set<GdlSentence> set1, Set<GdlSentence> set2)
+	{
+		// this trick should help us reduce the runtime
+		// given that set1 is size m and set2 is size n
+		// we may be doing O(m) or O(n) work depending on which one we use to check
+		// use the smaller one to check the larger set, since a check is O(1) time
+		Set<GdlSentence> smallerSet = (set1.size() < set2.size()) ? set1 : set2;
+		Set<GdlSentence> largerSet = (smallerSet == set2) ? set1 : set2;
+
+		for (GdlSentence sentence : smallerSet)
+		{
+			if (largerSet.contains(sentence))
+			{
+				return true;
+			}
+		}
+
+		return false;
+	}
+
+	// a small inner class to help reverse sort goals by score
+	private static class ScoreComparator implements Comparator<Entry<Proposition, Integer>>
+	{
+		public static final ScoreComparator comparator = new ScoreComparator();
+
+		@Override
+		public int compare(Entry<Proposition, Integer> arg0, Entry<Proposition, Integer> arg1)
+		{
+			int score1 = arg0.getValue();
+			int score2 = arg1.getValue();
+			// reverse the order, we want the highest goals first
+			return Integer.compare(score2, score1);
+		}
+	}
+
+	private Map<Proposition, Boolean> findInhibitorsForRole(Role role, int minGoal)
+	{
+		List<Entry<Proposition, Integer>> goals = new ArrayList<>();
+		Set<Proposition> goalProps = propNet.getGoalPropositions().get(role);
+
+		for (Proposition p : goalProps)
 		{
 			int score = getGoalValue(p);
-			if(score == minGoal)
+			if (score >= minGoal)
 			{
-				bestGoals.add(p);
+				Entry<Proposition, Integer> entry = new SimpleImmutableEntry<>(p, score);
+				goals.add(entry);
 			}
 		}
 
-
-		//ArrayList<List<Component>> allPaths = new ArrayList<List<Component>>();
-		//for(Proposition p: bestGoals)
-		//{
-			//ArrayList<List<Component>> path = new ArrayList<List<Component>>();
-			//path.add(new ArrayList<Component>());
-			//List<List<Component>> paths = expandPath(p, path);
-			//allPaths.addAll(paths);
-		//}
-
-		ArrayList<Proposition> inhibitors = new ArrayList<Proposition>();
-		for(Proposition p: bestGoals)
+		// sort it in descending order
+		if (goals.size() > 1)
 		{
-			List<Proposition> paths = searchTree(p);
-			inhibitors.addAll(paths);
+			goals.sort(ScoreComparator.comparator);
 		}
 
-		//ArrayList<Proposition> inhibitors = new ArrayList<Proposition>();
-		//Collection<Proposition> bases =  propNet.getBasePropositions().values();
-		//for(Proposition base : bases)
-	//	{
-			//boolean inhibitor = true;
-		//	for(List<Component> path : allPaths)
-			//{
-				//if(!path.contains(base) && !path.contains(null))
-			//	{
-				//	inhibitor = false;
-					//break;
-				//}
-			//}
-			//if(inhibitor)
-			//{
-//				inhibitors.add(base);
-	//		}
-		//}
+		Map<Proposition, Boolean> inhibitors = findInhibitorForGoal(goals);
 
 		return inhibitors;
 	}
 
-	private List<List<Component>> expandPath(Component c, List<List<Component>> paths)
+	private Map<Proposition, Boolean> findInhibitorForGoal(List<Entry<Proposition, Integer>> goals)
 	{
-		Set<Component> inputs = c.getInputs();
-		ArrayList<List<Component>> finalPath = new ArrayList<List<Component>>();
+		Map<Proposition, Boolean> inhibitors = new HashMap<>();
 
+		// find all things, that when is true or false, can singularly
+		// make the goal false
 
-		for(Component i : inputs)
+		Queue<Entry<Component, Boolean>> ancestors = new LinkedList<>();
+		Set<Component> visited = new HashSet<>();
+
+		// start by finding what makes goals false
+		for (Entry<Proposition, Integer> entry : goals)
 		{
+			Entry<Component, Boolean> newEntry = new SimpleImmutableEntry<Component, Boolean>(entry.getKey(), false);
+			ancestors.add(newEntry);
+		}
 
-			ArrayList<List<Component>> newPaths = new ArrayList<List<Component>>();
-			for(List<Component> path : paths)
+		while (!ancestors.isEmpty())
+		{
+			Entry<Component, Boolean> entry = ancestors.remove();
+			Component component = entry.getKey();
+			boolean inhibitingValue = entry.getValue();
+
+			// mark this entry as visited
+			visited.add(component);
+
+			// TODO: note that by never visiting the same component twice
+			// we miss the case where a single component is both a true and
+			// false
+			// inhibitor to two different goal nodes
+			// i.e. p -> goal100 and !p -> goal99
+			// we can potentially process both by revisiting components using
+			// different inhibiting values, but not sure what that can do for
+			// us:
+			// all states are goal inhibiting states if our threshold is >= 99
+			// in this example
+			// best we can do is pass in goals in descending goal value order
+			// that way we only process the best goals first
+			switch (component.type())
 			{
-				if(path.contains(i))
+			case base:
+			{
+				inhibitors.put((Proposition) component, inhibitingValue);
+
+				Component parent = component.getSingleInput();
+				if (!visited.contains(parent))
 				{
-					return paths;
+					Entry<Component, Boolean> parentEntry = new SimpleImmutableEntry<>(parent, inhibitingValue);
+					ancestors.add(parentEntry);
 				}
-				else
+
+				break;
+			}
+
+			case and:
+			{
+				// if this AND gate is an inhibitor if it's false, then any of
+				// its inputs is an inhibitor
+				// if they are false
+				// however, if it's an inhibitor if it's true, then all of its
+				// inputs must be true
+				// to be goal inhibiting. this results in a computational
+				// complexity where we need to
+				// cross reference multiple sets of components as opposed to a
+				// bunch of single components
+				// for now, we are avoiding this
+				if (!inhibitingValue)
 				{
-					ArrayList<Component> newPath = new ArrayList<Component>(path);
-					if(i instanceof Proposition)
+					for (Component parent : component.getInputs())
 					{
-						Proposition p = (Proposition)i;
-						if(i.getType() == Type.base)
+						if (!visited.contains(parent))
 						{
-							newPath.add(i);
+							// reminder here: inhibitingValue is necessarily
+							// false
+							Entry<Component, Boolean> parentEntry = new SimpleImmutableEntry<>(parent, inhibitingValue);
+							ancestors.add(parentEntry);
 						}
 					}
-					newPaths.add(newPath);
 				}
-			}
-			List<List<Component>> result = expandPath(i, newPaths);
-			if(result!=null)
-			{
-				finalPath.addAll(result);
-			}
-		}
-		return finalPath;
-	}
 
-
-	public List<Proposition> searchTree(Component c)
-	{
-		List<Proposition> inhibitors = new ArrayList<Proposition>();
-		if(c instanceof And)
-		{
-			for(Component i : c.getInputs())
-			{
-				if(i instanceof Proposition && ((Proposition)i).getType()== Type.base)
-				{
-					inhibitors.add((Proposition)i);
-				}
-				else
-				{
-					inhibitors.addAll(searchTree(c));
-				}
+				break;
 			}
-		}
-		else if(c instanceof Or)
-		{
 
-			List<List<Proposition>> l = new ArrayList<List<Proposition>>();
-			for(Component i : c.getInputs())
+			case or:
 			{
-
-				if(i instanceof Proposition && ((Proposition)i).getType()== Type.base)
+				// same logic as the AND case, see above
+				// if OR is inhibiting when it's true, then any of its parents
+				// being true is inhibiting
+				// don't consider when OR is false, otherwise we need to
+				// consider all of its parents being false
+				if (inhibitingValue)
 				{
-					List<Proposition> temp = new ArrayList<Proposition>();
-					temp.add((Proposition)i);
-					l.add(temp);
-				}
-				else
-				{
-					List<Proposition> temp = searchTree(c);
-					l.add(temp);
-				}
-			}
-			for(Component co : l.get(0))
-			{
-				boolean inhib = true;
-				for(List<Proposition> li : l)
-				{
-					if(!li.contains(co))
+					for (Component parent : component.getInputs())
 					{
-						inhib = false;
-						break;
+						if (!visited.contains(parent))
+						{
+							// reminder here: inhibitingValue is necessarily
+							// true
+							Entry<Component, Boolean> parentEntry = new SimpleImmutableEntry<>(parent, inhibitingValue);
+							ancestors.add(parentEntry);
+						}
 					}
-
 				}
-				if(inhib)
+
+				break;
+			}
+
+			case not:
+			{
+				// this has a single input, but negates the current value
+				Component parent = component.getSingleInput();
+				if (!visited.contains(parent))
 				{
-					inhibitors.add((Proposition)co);
+					boolean newValue = !inhibitingValue;
+					Entry<Component, Boolean> parentEntry = new SimpleImmutableEntry<>(parent, newValue);
+					ancestors.add(parentEntry);
 				}
-			}
-		}
-		else if(c instanceof Proposition)
-		{
-			if(c.getType() == Type.base)
-			{
-				inhibitors.add((Proposition)c);
-			}
-			else
-			{
-				inhibitors.addAll(searchTree(c.getSingleInput()));
-			}
-		}
-		else if(c.getInputs().size()==1)
-		{
-			inhibitors.addAll(searchTree(c.getSingleInput()));
-		}
-		return inhibitors;
 
+				break;
+			}
+
+			case goal:
+			case view:
+			case transition:
+			{
+				// these don't change the truth values, and also only have one
+				// parent
+				Component parent = component.getSingleInput();
+				if (!visited.contains(parent))
+				{
+					Entry<Component, Boolean> parentEntry = new SimpleImmutableEntry<>(parent, inhibitingValue);
+					ancestors.add(parentEntry);
+				}
+
+				break;
+			}
+
+			case input:
+			case constant:
+			{
+				// do nothing - these don't have parents
+				// but also cannot be latches
+				break;
+			}
+
+			case terminal:
+			case unknown:
+			default:
+			{
+				// nothing should be an unknown
+				// terminals are also unexpected because we don't start
+				// propagating there
+				// nor can we reach it through a backwards propagation as it has
+				// no children
+				log.error(GLog.PROPNET, "Encountered unexpected component type");
+				break;
+			}
+			}
+		}
+
+		return inhibitors;
 	}
 
-	private Map<Proposition, Boolean> getLatchInhibitors(List<Proposition> inhibitors)
+	private Map<Proposition, Boolean> getLatchInhibitors(Map<Proposition, Boolean> inhibitors)
 	{
 		Map<Proposition, Boolean> latches = new HashMap<>();
 
-		for(Proposition inhibitor : inhibitors)
+		for (Entry<Proposition, Boolean> entry : inhibitors.entrySet())
 		{
+			Proposition inhibitor = entry.getKey();
 			Set<Proposition> ancestors = new HashSet<>();
 			Set<Component> seen = new HashSet<>();
 
 			Stack<Component> uncheckedProps = new Stack<>();
-			Component currentComp = inhibitor;
-			uncheckedProps.add(currentComp);
 
-			while(!uncheckedProps.isEmpty())
+			for (Component inputs : inhibitor.getInputs())
 			{
-				currentComp = uncheckedProps.pop();
+				uncheckedProps.add(inputs);
+			}
+
+			seen.add(inhibitor);
+
+			boolean exceededSize = false;
+
+			while (!uncheckedProps.isEmpty())
+			{
+				Component currentComp = uncheckedProps.pop();
 				seen.add(currentComp);
-				uncheckedProps.addAll(currentComp.getInputs());
-				if(currentComp.getType() == Type.base || currentComp.getType() == Type.input)
+
+				if (currentComp.type() == Type.base || currentComp.type() == Type.input)
 				{
-					ancestors.add((Proposition)currentComp);
+					ancestors.add((Proposition) currentComp);
+
+					if (ancestors.size() > RuntimeParameters.MAX_LATCH_ANCESTOR)
+					{
+						exceededSize = true;
+						break;
+					}
 				}
-				uncheckedProps.removeAll(seen);
+				else
+				{
+					for (Component component : currentComp.getInputs())
+					{
+						if (!seen.contains(component))
+						{
+							uncheckedProps.add(component);
+						}
+					}
+				}
 			}
 
-			if(checkLatch(inhibitor, ancestors, true))
+			// prevent running this on excessively large combinations
+			// this results in 2^n runtime
+			if (exceededSize)
 			{
-				latches.put(inhibitor, true);
+				continue;
 			}
-			else if(checkLatch(inhibitor, ancestors, false))
+
+			ancestors.remove(inhibitor);
+
+			boolean inhibitingValue = entry.getValue();
+			if (checkLatch(inhibitor, ancestors, inhibitingValue))
 			{
-				latches.put(inhibitor, false);
+				latches.put(inhibitor, inhibitingValue);
 			}
 		}
 
-		log.info(GLog.PROPNET,
-				"Latches: " +latches);
+		log.info(GLog.PROPNET, "Latches: " + latches);
 
 		return latches;
 	}
@@ -309,10 +438,11 @@ public class PropNetStateMachine extends AugmentedStateMachine
 		Proposition[] props = new Proposition[ancestors.size()];
 		boolean[] truthValues = new boolean[props.length];
 
-		Set<Proposition> markings = new HashSet<>();
+		Set<Proposition> baseMarkings = new HashSet<>();
+		Set<Proposition> inputMarkings = new HashSet<>();
 
 		int index = 0;
-		for(Proposition ancestor : ancestors)
+		for (Proposition ancestor : ancestors)
 		{
 			truthValues[index] = false;
 			props[index] = ancestor;
@@ -320,36 +450,73 @@ public class PropNetStateMachine extends AugmentedStateMachine
 		}
 
 		boolean done = false;
-		while(!done)
+		Set<GdlSentence> baseSentences = new HashSet<>();
+		Set<GdlSentence> inputSentences = new HashSet<>();
+		while (!done)
 		{
-			Set<GdlSentence> sentenceMarkings = new HashSet<>();
-			for (Proposition marking : markings)
+			// could have made this a proper function but
+			// type erasure for generics prevents us from doing that
+			baseSentences.clear();
+			for (Proposition marking : baseMarkings)
 			{
-				sentenceMarkings.add(marking.getName());
+				baseSentences.add(marking.getName());
 			}
 
-			propagateMoves(sentenceMarkings);
+			inputSentences.clear();
+			for (Proposition marking : inputMarkings)
+			{
+				inputSentences.add(marking.getName());
+			}
 
-			if(prop.getSingleInput().getValue() != latchType) return false;
+			if (prop.getValue())
+			{
+				baseSentences.add(prop.getName());
+			}
+
+			propagateMoves(baseSentences, inputSentences);
+
+			if (prop.getValue() != latchType)
+			{
+				return false;
+			}
 
 			boolean carryOver = true;
 			int i = 0;
 
-			while(carryOver)
+			while (carryOver)
 			{
-				if(!truthValues[i])
+				Proposition currentProp = props[i];
+				if (!truthValues[i])
 				{
 					truthValues[i] = true;
-					markings.add(props[i]);
+
+					if (currentProp.type() == Type.base)
+					{
+						baseMarkings.add(currentProp);
+					}
+					else if (currentProp.type() == Type.input)
+					{
+						inputMarkings.add(currentProp);
+					}
+
 					carryOver = false;
 				}
 				else
 				{
 					truthValues[i] = false;
-					markings.remove(props[i]);
+
+					if (currentProp.type() == Type.base)
+					{
+						baseMarkings.remove(currentProp);
+					}
+					else if (currentProp.type() == Type.input)
+					{
+						inputMarkings.remove(currentProp);
+					}
+
 					i++;
 
-					if(i == props.length)
+					if (i == props.length)
 					{
 						carryOver = false;
 						done = true;
@@ -435,7 +602,7 @@ public class PropNetStateMachine extends AugmentedStateMachine
 		queue.addAll(propNet.getBasePropositions().values());
 		queue.addAll(startingComponents);
 
-		while(!queue.isEmpty())
+		while (!queue.isEmpty())
 		{
 			Component node = queue.poll();
 
@@ -449,7 +616,7 @@ public class PropNetStateMachine extends AugmentedStateMachine
 				{
 					markComponent(child, value, !node.hasPropagatedOnce());
 
-					if (child.getType() != Type.base)
+					if (child.type() != Type.base)
 					{
 						queue.add(child);
 					}
@@ -459,10 +626,14 @@ public class PropNetStateMachine extends AugmentedStateMachine
 			}
 		}
 
-		// this is required because we could have marked a base prop to be a different value than it was
-		// but its parent transition may not necessarily propagate a new value to the base prop
-		// if it's stale. this results in a base prop having an inconsistent value for that iteration
-		// of propagation. for performance, update only the base props that we manually toggled
+		// this is required because we could have marked a base prop to be a
+		// different value than it was
+		// but its parent transition may not necessarily propagate a new value
+		// to the base prop
+		// if it's stale. this results in a base prop having an inconsistent
+		// value for that iteration
+		// of propagation. for performance, update only the base props that we
+		// manually toggled
 		for (Proposition p : changedBaseProps)
 		{
 			boolean transitionValue = p.getSingleInput().getValue();
@@ -479,9 +650,9 @@ public class PropNetStateMachine extends AugmentedStateMachine
 	{
 		component.setValueFromParent(value, firstPropagation);
 
-		if (component.getType() == Type.base)
+		if (component.type() == Type.base)
 		{
-			Proposition prop = (Proposition)component;
+			Proposition prop = (Proposition) component;
 			if (value)
 			{
 				if (!trueBaseProps.contains(prop))
@@ -497,9 +668,9 @@ public class PropNetStateMachine extends AugmentedStateMachine
 				}
 			}
 		}
-		else if (component.getType() == Type.input)
+		else if (component.type() == Type.input)
 		{
-			Proposition prop = (Proposition)component;
+			Proposition prop = (Proposition) component;
 			if (value)
 			{
 				if (!trueInputProps.contains(prop))
@@ -524,7 +695,7 @@ public class PropNetStateMachine extends AugmentedStateMachine
 	@Override
 	public boolean isTerminal(MachineState state)
 	{
-		synchronized(this)
+		synchronized (this)
 		{
 			propagateMoves(state.getContents());
 
@@ -543,7 +714,7 @@ public class PropNetStateMachine extends AugmentedStateMachine
 	@Override
 	public int getGoal(MachineState state, Role role) throws GoalDefinitionException
 	{
-		synchronized(this)
+		synchronized (this)
 		{
 			propagateMoves(state.getContents());
 
@@ -558,8 +729,7 @@ public class PropNetStateMachine extends AugmentedStateMachine
 				{
 					if (hasSingleGoal)
 					{
-						log.error(GLog.ERRORS,
-								"Found multiple goals");
+						log.error(GLog.ERRORS, "Found multiple goals");
 						throw new GoalDefinitionException(state, role);
 					}
 
@@ -570,8 +740,7 @@ public class PropNetStateMachine extends AugmentedStateMachine
 
 			if (!hasSingleGoal)
 			{
-				log.error(GLog.ERRORS,
-						"Found no goals");
+				log.error(GLog.ERRORS, "Found no goals");
 				throw new GoalDefinitionException(state, role);
 			}
 
@@ -587,7 +756,7 @@ public class PropNetStateMachine extends AugmentedStateMachine
 	@Override
 	public MachineState getInitialState()
 	{
-		synchronized(this)
+		synchronized (this)
 		{
 			List<Proposition> list = Collections.singletonList(propNet.getInitProposition());
 
@@ -616,14 +785,14 @@ public class PropNetStateMachine extends AugmentedStateMachine
 	@Override
 	public List<Move> getLegalMoves(MachineState state, Role role) throws MoveDefinitionException
 	{
-		synchronized(this)
+		synchronized (this)
 		{
 			propagateMoves(state.getContents());
 
 			Map<Role, Set<Proposition>> legals = propNet.getLegalPropositions();
 
 			List<Move> m = new ArrayList<Move>();
-			for(Proposition p : legals.get(role))
+			for (Proposition p : legals.get(role))
 			{
 				if (p.getValue())
 				{
@@ -640,16 +809,12 @@ public class PropNetStateMachine extends AugmentedStateMachine
 		propagateMoves(baseSentences, null, null);
 	}
 
-	private void propagateMoves(
-			Set<GdlSentence> baseSentences,
-			Set<GdlSentence> inputSentences)
+	private void propagateMoves(Set<GdlSentence> baseSentences, Set<GdlSentence> inputSentences)
 	{
 		propagateMoves(baseSentences, inputSentences, null);
 	}
 
-	private void propagateMoves(
-			Set<GdlSentence> baseSentences,
-			Set<GdlSentence> inputSentences,
+	private void propagateMoves(Set<GdlSentence> baseSentences, Set<GdlSentence> inputSentences,
 			List<Proposition> additionalProps)
 	{
 		markBaseProps(baseSentences);
@@ -672,16 +837,12 @@ public class PropNetStateMachine extends AugmentedStateMachine
 		propagateMoves();
 	}
 
-	private MachineState getNextState(
-			Set<GdlSentence> baseSentences,
-			Set<GdlSentence> inputSentences)
+	private MachineState getNextState(Set<GdlSentence> baseSentences, Set<GdlSentence> inputSentences)
 	{
 		return getNextState(baseSentences, inputSentences, null);
 	}
 
-	private MachineState getNextState(
-			Set<GdlSentence> baseSentences,
-			Set<GdlSentence> inputSentences,
+	private MachineState getNextState(Set<GdlSentence> baseSentences, Set<GdlSentence> inputSentences,
 			List<Proposition> additionalProps)
 	{
 		propagateMoves(baseSentences, inputSentences, additionalProps);
@@ -689,14 +850,13 @@ public class PropNetStateMachine extends AugmentedStateMachine
 		return getStateFromCachedBase();
 	}
 
-
 	/**
 	 * Computes the next state given state and the list of moves.
 	 */
 	@Override
 	public MachineState getNextState(MachineState state, List<Move> moves) throws TransitionDefinitionException
 	{
-		synchronized(this)
+		synchronized (this)
 		{
 			Set<GdlSentence> baseSentences = state.getContents();
 			Set<GdlSentence> inputSentences = toDoes(moves);
@@ -791,7 +951,7 @@ public class PropNetStateMachine extends AugmentedStateMachine
 	{
 		Set<GdlSentence> contents = new HashSet<GdlSentence>();
 
-		synchronized(this)
+		synchronized (this)
 		{
 			for (Proposition p : trueBaseProps)
 			{

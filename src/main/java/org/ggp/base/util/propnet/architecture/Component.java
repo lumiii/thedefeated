@@ -1,7 +1,6 @@
 package org.ggp.base.util.propnet.architecture;
 
 import java.io.Serializable;
-import java.util.Comparator;
 import java.util.HashSet;
 import java.util.Set;
 
@@ -27,47 +26,9 @@ public abstract class Component implements Serializable
 		not,
 		constant,
 		goal,
-		terminal
+		terminal,
+		unknown
 	}
-
-	public static class ComponentOrdering implements Comparator<Component>
-	{
-		@Override
-		public int compare(Component o1, Component o2)
-		{
-			// TODO: leave this in here for now to catch early bugs
-			// but will be pointless overhead once we know it's working
-			if (!o1.hasOrder() || !o2.hasOrder())
-			{
-				//GLog.getRootLogger().error(GLog.PROPNET,
-					//"Ordering invariant failed!");
-			}
-
-			int n1 = o1.getOrder();
-			int n2 = o2.getOrder();
-
-			if (n1 == n2)
-			{
-				return 0;
-			}
-			else if (n1 == -1)
-			{
-				return -1;
-			}
-			else if (n2 == -1)
-			{
-				return 1;
-			}
-			else if (n1 > n2)
-			{
-				return -1;
-			}
-
-			return 1;
-		}
-	}
-
-	public static final Comparator<Component> comparator = new ComponentOrdering();
 
     private static final long serialVersionUID = 352524175700224447L;
     /** The inputs to the component. */
@@ -320,7 +281,7 @@ public abstract class Component implements Serializable
 
         if (this instanceof Proposition)
         {
-        	thisLabel += ((Proposition)this).getName() + "(" + getType().toString() + ")";
+        	thisLabel += ((Proposition)this).getName() + "(" + type().toString() + ")";
         }
         else
         {
@@ -330,7 +291,7 @@ public abstract class Component implements Serializable
         	}
         	else
         	{
-        		thisLabel += getType().toString();
+        		thisLabel += type().toString();
         	}
         }
 
@@ -342,7 +303,7 @@ public abstract class Component implements Serializable
     	this.type = type;
     }
 
-    public Type getType()
+    public Type type()
     {
     	return type;
     }

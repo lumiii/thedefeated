@@ -163,4 +163,10 @@ public final class AugmentedCachedStateMachine extends AugmentedStateMachine
 	{
 		backingStateMachine.findLatches(role, minGoal);
 	}
+
+	@Override
+	public boolean isDeadState(MachineState state)
+	{
+		return backingStateMachine.isDeadState(state);
+	}
 }

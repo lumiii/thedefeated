@@ -293,7 +293,6 @@ public class TreeSearchWorker implements Runnable
 		return null;
 	}
 
-	@SuppressWarnings("unused")
 	private void expand(Node node) throws MoveDefinitionException, TransitionDefinitionException
 	{
 		List<List<Move>> moves = utility.findAllMoves(node.state());
@@ -301,18 +300,22 @@ public class TreeSearchWorker implements Runnable
 		for (List<Move> m : moves)
 		{
 			MachineState newState = stateMachine.getNextState(node.state(), m);
-			boolean maxNode = utility.playerHasMoves(newState);
 
-			Node newNode = NodePool.newNode(node, newState, m, maxNode);
-
-			// just do an early return because there's no possible way for us to get
-			// more memory out of this - hopefully some will be freed up next time
-			if (newNode == null)
+			if (!stateMachine.isDeadState(newState))
 			{
-				return;
-			}
+				boolean maxNode = utility.playerHasMoves(newState);
 
-			node.children().add(newNode);
+				Node newNode = NodePool.newNode(node, newState, m, maxNode);
+
+				// just do an early return because there's no possible way for us to get
+				// more memory out of this - hopefully some will be freed up next time
+				if (newNode == null)
+				{
+					return;
+				}
+
+				node.children().add(newNode);
+			}
 		}
 	}
 

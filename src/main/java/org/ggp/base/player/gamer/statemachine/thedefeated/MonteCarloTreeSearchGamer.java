@@ -123,7 +123,7 @@ public class MonteCarloTreeSearchGamer extends SampleGamer
 		AugmentedStateMachine stateMachine = getAugmentedStateMachine();
 		Role role = getRole();
 
-//		stateMachine.findLatches(role, 100);
+		stateMachine.findLatches(role, RuntimeParameters.MIN_GOAL_INHIBITOR_SCORE);
 
 		threadManager.initializeWorkers(stateMachine, role);
 

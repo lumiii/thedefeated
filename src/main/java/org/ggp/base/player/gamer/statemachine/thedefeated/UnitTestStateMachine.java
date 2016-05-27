@@ -182,4 +182,10 @@ public class UnitTestStateMachine extends AugmentedStateMachine
 	{
 		testMachine.findLatches(role, minGoal);
 	}
+
+	@Override
+	public boolean isDeadState(MachineState state)
+	{
+		return testMachine.isDeadState(state);
+	}
 }

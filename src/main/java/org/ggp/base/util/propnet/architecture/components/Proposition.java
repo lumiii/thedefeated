@@ -95,7 +95,7 @@ public final class Proposition extends Component
     }
 
     @Override
-	public Type getType()
+	public Type type()
     {
     	if (type == Type.base || type == Type.input)
     	{

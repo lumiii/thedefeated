@@ -31,7 +31,7 @@ public final class Or extends Component
     }
 
     @Override
-    public Type getType()
+    public Type type()
     {
     	return Type.or;
     }

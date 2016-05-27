@@ -30,7 +30,7 @@ public final class Not extends Component
     }
 
     @Override
-    public Type getType()
+    public Type type()
     {
     	return Type.not;
     }

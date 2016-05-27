@@ -5,6 +5,9 @@ public class RuntimeParameters
 	public static final int EXPLORATION_FACTOR = 50;
 	public static final int DEPTH_CHARGE_COUNT = 4;
 
+	public static final int MAX_LATCH_ANCESTOR = 10;
+	public static final int MIN_GOAL_INHIBITOR_SCORE = 90;
+
 	public static final boolean MINIMAX = true;
 
 	public static final String DEFAULT_PLAYER = "MonteCarloTreeSearchGamer";

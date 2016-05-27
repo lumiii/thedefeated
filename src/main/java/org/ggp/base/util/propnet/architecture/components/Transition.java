@@ -36,7 +36,7 @@ public final class Transition extends Component
     }
 
     @Override
-    public Type getType()
+    public Type type()
     {
     	return Type.transition;
     }
