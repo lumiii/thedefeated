@@ -56,7 +56,8 @@ public class TreeSearchWorker implements Runnable
 	{
 		// disable caching behaviour if unittesting
 		// so we can hit our propagation routines every time
-		// try to use this with a single thread - otherwise there will be a lot of
+		// try to use this with a single thread - otherwise there will be a lot
+		// of
 		// locked up threads
 		// TODO: find a way to better parallelize our propnet
 		// right now we can't service more than one propagation at the same time
@@ -98,8 +99,7 @@ public class TreeSearchWorker implements Runnable
 			manager.updateReference(this.root, this.newRoot);
 			this.root = this.newRoot;
 
-			log.info(GLog.THREAD_ACTIVITY,
-					"Thread active");
+			log.info(GLog.THREAD_ACTIVITY, "Thread active");
 		}
 	}
 
@@ -107,8 +107,7 @@ public class TreeSearchWorker implements Runnable
 	public void run()
 	{
 		Thread currentThread = Thread.currentThread();
-		log.info(GLog.THREAD_ACTIVITY,
-				"Starting thread");
+		log.info(GLog.THREAD_ACTIVITY, "Starting thread");
 
 		while (!currentThread.isInterrupted())
 		{
@@ -120,15 +119,13 @@ public class TreeSearchWorker implements Runnable
 			// catch all exceptions
 			catch (Exception e)
 			{
-				log.error(GLog.ERRORS,
-						"Exception encountered within thread");
+				log.error(GLog.ERRORS, "Exception encountered within thread");
 				log.catching(e);
 			}
 		}
 
 		cleanup();
-		log.info(GLog.THREAD_ACTIVITY,
-				"Stopping thread");
+		log.info(GLog.THREAD_ACTIVITY, "Stopping thread");
 	}
 
 	private void treeSearch() throws MoveDefinitionException, TransitionDefinitionException
@@ -155,13 +152,13 @@ public class TreeSearchWorker implements Runnable
 						totalScore += stateMachine.getGoal(terminalState, playerRole);
 
 						// TODO: verify whether this is the count we want:
-						// if a node explored is not terminal within the counted depth, we just say it has a score of 0?
+						// if a node explored is not terminal within the counted
+						// depth, we just say it has a score of 0?
 						visits++;
 					}
 					catch (GoalDefinitionException | TransitionDefinitionException | MoveDefinitionException e)
 					{
-						log.error(GLog.ERRORS,
-								"Error encountered performing depth charge");
+						log.error(GLog.ERRORS, "Error encountered performing depth charge");
 						log.catching(e);
 					}
 				}
@@ -181,8 +178,7 @@ public class TreeSearchWorker implements Runnable
 						Node parent = node.parent();
 						if (!parent.isMaxNode())
 						{
-							log.debug(GLog.TREE_SEARCH,
-								"Found min terminal node");
+							log.debug(GLog.TREE_SEARCH, "Found min terminal node");
 
 							parent.lockToMin();
 						}
@@ -192,14 +188,14 @@ public class TreeSearchWorker implements Runnable
 						Node parent = node.parent();
 						if (parent.isMaxNode())
 						{
-							log.debug(GLog.TREE_SEARCH,
-								"Found max terminal node");
+							log.debug(GLog.TREE_SEARCH, "Found max terminal node");
 
 							parent.lockToMax();
 						}
 					}
 
-					backPropagate(node, score * RuntimeParameters.DEPTH_CHARGE_COUNT, RuntimeParameters.DEPTH_CHARGE_COUNT);
+					backPropagate(node, score * RuntimeParameters.DEPTH_CHARGE_COUNT,
+							RuntimeParameters.DEPTH_CHARGE_COUNT);
 				}
 				catch (GoalDefinitionException e)
 				{
@@ -233,8 +229,7 @@ public class TreeSearchWorker implements Runnable
 				{
 					currentNode.select();
 
-					log.info(GLog.TREE_SEARCH,
-							"Searched depth " + depth);
+					log.info(GLog.TREE_SEARCH, "Searched depth " + depth);
 
 					return currentNode;
 				}
@@ -247,8 +242,7 @@ public class TreeSearchWorker implements Runnable
 					if (!child.isSelected())
 					{
 						child.select();
-						log.info(GLog.TREE_SEARCH,
-								"Searched depth " + depth);
+						log.info(GLog.TREE_SEARCH, "Searched depth " + depth);
 
 						return child;
 					}
@@ -267,13 +261,9 @@ public class TreeSearchWorker implements Runnable
 					double newScore = selectFn(child);
 
 					// use the highest score if it's a max node
-					if (currentNode.isMaxNode() && newScore > score)
-					{
-						score = newScore;
-						result = child;
-					}
-					// use the lowest score if it's a min node
-					else if (!currentNode.isMaxNode() && newScore < score)
+					if ((currentNode.isMaxNode() && newScore > score) ||
+						// use the lowest score if it's a min node
+						(!currentNode.isMaxNode() && newScore < score))
 					{
 						score = newScore;
 						result = child;
@@ -286,8 +276,7 @@ public class TreeSearchWorker implements Runnable
 
 		if (nodesVisited > FULL_TREE_WARNING_THRESHOLD)
 		{
-			log.warn(GLog.TREE_SEARCH,
-					"No nodes selected after searching depth " + depth);
+			log.warn(GLog.TREE_SEARCH, "No nodes selected after searching depth " + depth);
 		}
 
 		return null;
@@ -307,8 +296,10 @@ public class TreeSearchWorker implements Runnable
 
 				Node newNode = NodePool.newNode(node, newState, m, maxNode);
 
-				// just do an early return because there's no possible way for us to get
-				// more memory out of this - hopefully some will be freed up next time
+				// just do an early return because there's no possible way for
+				// us to get
+				// more memory out of this - hopefully some will be freed up
+				// next time
 				if (newNode == null)
 				{
 					return;
@@ -340,8 +331,7 @@ public class TreeSearchWorker implements Runnable
 			currentNode = currentNode.parent();
 		}
 
-		log.info(GLog.TREE_SEARCH,
-				"Backpropagated up depth " + depth);
+		log.info(GLog.TREE_SEARCH, "Backpropagated up depth " + depth);
 	}
 
 	private double selectFn(Node node)

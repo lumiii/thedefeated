@@ -2,6 +2,8 @@ package org.ggp.base.player.gamer.statemachine.thedefeated.node;
 
 import java.util.AbstractQueue;
 import java.util.List;
+import java.util.Queue;
+import java.util.Stack;
 import java.util.concurrent.ConcurrentLinkedQueue;
 
 import org.ggp.base.player.gamer.statemachine.thedefeated.GLog;
@@ -35,13 +37,37 @@ public class NodePool
 
 	public static void collect(Node node)
 	{
-		if (node.parent() != null)
+		if (node != null)
 		{
-			GLog.getRootLogger().error(GLog.ERRORS,
-					"Garbage nodes should not have a parent!");
-		}
+			if (node.parent() != null)
+			{
+				GLog.getRootLogger().error(GLog.ERRORS,
+						"Garbage nodes should not have a parent!");
+			}
 
-		queue.add(node);
+			Stack<Node> unclearedNodes = new Stack<>();
+			unclearedNodes.add(node);
+
+			int addedNode = 0;
+
+			while(!unclearedNodes.isEmpty())
+			{
+				Node newNode = unclearedNodes.pop();
+				Queue<Node> children = newNode.children();
+
+				if (!children.isEmpty())
+				{
+					unclearedNodes.addAll(children);
+					children.clear();
+				}
+
+				queue.add(newNode);
+				addedNode++;
+			}
+
+			GLog.getRootLogger().info(GLog.MEMORY,
+					"Reclaiming " + addedNode + " nodes");
+		}
 	}
 
 	public static Node newNode(Node par, MachineState stat, List<Move> m, boolean playerHasChoice)
@@ -68,9 +94,6 @@ public class NodePool
 
 		if (node != null)
 		{
-			queue.addAll(node.children());
-			// this clears the children - the queue should
-			// be the only thing that has references to the child nodes now
 			node.set(par, stat, m, playerHasChoice);
 		}
 

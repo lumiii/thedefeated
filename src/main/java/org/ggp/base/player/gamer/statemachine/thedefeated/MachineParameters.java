@@ -5,7 +5,7 @@ import java.util.Date;
 public class MachineParameters
 {
 	public static final int NUM_CORES = 1;
-	public static final int MAX_NODES = 15000;
+	public static final int MAX_NODES = 25000;
 	public static final int LOW_NODE_THRESHOLD = 1000;
 
 	public static final int MAIN_THREAD_PRIORITY = Thread.MAX_PRIORITY;
@@ -14,7 +14,7 @@ public class MachineParameters
 	// amount of time to buffer before the timeout
 	public static final long TIME_BUFFER = 2000;
 
-	private static final String OUTPUT_FILE = "C:\\Users\\Alexander\\Documents\\CS 227B Stuff\\graph";
+	private static final String OUTPUT_FILE = "D:\\227b\\graph-";
 	private static final String OUTPUT_FILE_EXTENSION = ".dot";
 
 	public static String outputFilename()

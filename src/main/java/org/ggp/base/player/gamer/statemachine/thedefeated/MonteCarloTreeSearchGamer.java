@@ -135,7 +135,6 @@ public class MonteCarloTreeSearchGamer extends SampleGamer
 		childStates.put(root.state(), root);
 
 		threadManager.updateWorkers(root);
-
 		threadManager.startWorkers();
 
 		waitForTimeout();

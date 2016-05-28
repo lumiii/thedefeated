@@ -75,7 +75,7 @@ public class ThreadManager
 			newRootReference++;
 		}
 
-		if (oldRootReference == 0)
+		if (oldRootReference <= 0)
 		{
 			NodePool.collect(this.oldRoot);
 			this.oldRoot = null;
