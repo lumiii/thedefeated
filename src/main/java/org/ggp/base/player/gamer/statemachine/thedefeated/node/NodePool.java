@@ -16,6 +16,11 @@ public class NodePool
 	private static AbstractQueue<Node> queue = new ConcurrentLinkedQueue<>();
 	private static volatile int nodeCount = 0;
 
+	static
+	{
+		initialize(MachineParameters.LOW_NODE_THRESHOLD);
+	}
+
 	public static void initialize(int size)
 	{
 		queue.clear();

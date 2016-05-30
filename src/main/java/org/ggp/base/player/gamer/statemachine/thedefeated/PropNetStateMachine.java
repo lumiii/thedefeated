@@ -5,7 +5,6 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
@@ -46,7 +45,7 @@ public class PropNetStateMachine extends AugmentedStateMachine
 	private Set<Proposition> trueInputProps = Collections.newSetFromMap(new ConcurrentHashMap<Proposition, Boolean>());
 	private Set<Proposition> changedBaseProps = Collections
 			.newSetFromMap(new ConcurrentHashMap<Proposition, Boolean>());
-	private Set<Component> startingComponents = new HashSet<Component>();
+	private Set<Component> startingComponents = SetPool.newComponentSet();
 
 	private Set<GdlSentence> trueLatches = null;
 	private Set<GdlSentence> falseLatches = null;
@@ -93,8 +92,8 @@ public class PropNetStateMachine extends AugmentedStateMachine
 			Map<Proposition, Boolean> baseInhibitors = findInhibitorsForRole(role, minGoal);
 			Map<Proposition, Boolean> latches = getLatchInhibitors(baseInhibitors);
 
-			trueLatches = new HashSet<>();
-			falseLatches = new HashSet<>();
+			trueLatches = SetPool.newSentenceSet();
+			falseLatches = SetPool.newSentenceSet();
 
 			for (Entry<Proposition, Boolean> entry : latches.entrySet())
 			{
@@ -205,7 +204,7 @@ public class PropNetStateMachine extends AugmentedStateMachine
 		// using a stack because that will allow us to prioritize the
 		// ancestors of the best goals first
 		Stack<Entry<Component, Boolean>> ancestors = new Stack<>();
-		Set<Component> visited = new HashSet<>();
+		Set<Component> visited = SetPool.newComponentSet();
 
 		// start by finding what makes goals false
 		for (Entry<Proposition, Integer> entry : goals)
@@ -357,6 +356,8 @@ public class PropNetStateMachine extends AugmentedStateMachine
 			}
 		}
 
+		SetPool.collectComponentSet(visited);
+
 		return inhibitors;
 	}
 
@@ -364,12 +365,14 @@ public class PropNetStateMachine extends AugmentedStateMachine
 	{
 		Map<Proposition, Boolean> latches = new HashMap<>();
 
+		Set<Proposition> ancestors = SetPool.newPropositionSet();
+		Set<Component> seen = SetPool.newComponentSet();
 		for (Entry<Proposition, Boolean> entry : inhibitors.entrySet())
 		{
 			Proposition inhibitor = entry.getKey();
-			Set<Proposition> ancestors = new HashSet<>();
-			Set<Component> seen = new HashSet<>();
 
+			ancestors.clear();
+			seen.clear();
 			Stack<Component> uncheckedProps = new Stack<>();
 
 			for (Component inputs : inhibitor.getInputs())
@@ -424,6 +427,9 @@ public class PropNetStateMachine extends AugmentedStateMachine
 			}
 		}
 
+		SetPool.collectPropositionSet(ancestors);
+		SetPool.collectComponentSet(seen);
+
 		log.info(GLog.PROPNET, "Latches: " + latches);
 
 		return latches;
@@ -436,8 +442,8 @@ public class PropNetStateMachine extends AugmentedStateMachine
 		Proposition[] props = new Proposition[ancestors.size()];
 		boolean[] truthValues = new boolean[props.length];
 
-		Set<Proposition> baseMarkings = new HashSet<>();
-		Set<Proposition> inputMarkings = new HashSet<>();
+		Set<Proposition> baseMarkings = SetPool.newPropositionSet();
+		Set<Proposition> inputMarkings = SetPool.newPropositionSet();
 
 		int index = 0;
 		for (Proposition ancestor : ancestors)
@@ -448,8 +454,9 @@ public class PropNetStateMachine extends AugmentedStateMachine
 		}
 
 		boolean done = false;
-		Set<GdlSentence> baseSentences = new HashSet<>();
-		Set<GdlSentence> inputSentences = new HashSet<>();
+		Set<GdlSentence> baseSentences = SetPool.newSentenceSet();
+		Set<GdlSentence> inputSentences = SetPool.newSentenceSet();
+
 		while (!done)
 		{
 			// could have made this a proper function but
@@ -475,6 +482,10 @@ public class PropNetStateMachine extends AugmentedStateMachine
 
 			if (prop.getValue() != latchType)
 			{
+				SetPool.collectPropositionSet(baseMarkings);
+				SetPool.collectPropositionSet(inputMarkings);
+				SetPool.collectSentenceSet(baseSentences);
+				SetPool.collectSentenceSet(inputSentences);
 				return false;
 			}
 
@@ -523,6 +534,11 @@ public class PropNetStateMachine extends AugmentedStateMachine
 			}
 		}
 
+		SetPool.collectPropositionSet(baseMarkings);
+		SetPool.collectPropositionSet(inputMarkings);
+		SetPool.collectSentenceSet(baseSentences);
+		SetPool.collectSentenceSet(inputSentences);
+
 		return true;
 	}
 
@@ -567,7 +583,7 @@ public class PropNetStateMachine extends AugmentedStateMachine
 
 	private void markMoves(List<Move> moves)
 	{
-		Set<GdlSentence> inputSentences = new HashSet<GdlSentence>();
+		Set<GdlSentence> inputSentences = SetPool.newSentenceSet();
 		for (Move move : moves)
 		{
 			GdlSentence sentence = move.getContents().toSentence();
@@ -575,6 +591,7 @@ public class PropNetStateMachine extends AugmentedStateMachine
 		}
 
 		markInputProps(inputSentences);
+		SetPool.collectSentenceSet(inputSentences);
 	}
 
 	private void markInputProps(Set<GdlSentence> inputSentences)
@@ -857,9 +874,14 @@ public class PropNetStateMachine extends AugmentedStateMachine
 		synchronized (this)
 		{
 			Set<GdlSentence> baseSentences = state.getContents();
-			Set<GdlSentence> inputSentences = toDoes(moves);
 
-			return getNextState(baseSentences, inputSentences);
+			Set<GdlSentence> inputSentences = SetPool.newSentenceSet();
+			inputSentences = toDoes(moves, inputSentences);
+
+			MachineState nextState = getNextState(baseSentences, inputSentences);
+
+			SetPool.collectSentenceSet(inputSentences);
+			return nextState;
 		}
 	}
 
@@ -884,9 +906,8 @@ public class PropNetStateMachine extends AugmentedStateMachine
 	 * @param moves
 	 * @return
 	 */
-	private Set<GdlSentence> toDoes(List<Move> moves)
+	private Set<GdlSentence> toDoes(List<Move> moves, Set<GdlSentence> doeses)
 	{
-		Set<GdlSentence> doeses = new HashSet<GdlSentence>(moves.size());
 		Map<Role, Integer> roleIndices = getRoleIndices();
 
 		for (int i = 0; i < roles.size(); i++)
@@ -932,7 +953,7 @@ public class PropNetStateMachine extends AugmentedStateMachine
 	 */
 	private MachineState getStateFromBase()
 	{
-		Set<GdlSentence> contents = new HashSet<GdlSentence>();
+		Set<GdlSentence> contents = SetPool.newSentenceSet();
 		for (Proposition p : propNet.getBasePropositions().values())
 		{
 			p.setValueFromParent(p.getSingleInput().getValue());
@@ -947,7 +968,7 @@ public class PropNetStateMachine extends AugmentedStateMachine
 
 	private MachineState getStateFromCachedBase()
 	{
-		Set<GdlSentence> contents = new HashSet<GdlSentence>();
+		Set<GdlSentence> contents = SetPool.newSentenceSet();
 
 		synchronized (this)
 		{
@@ -957,6 +978,8 @@ public class PropNetStateMachine extends AugmentedStateMachine
 			}
 		}
 
+		// don't return the pool, machinestate has ownership
+		// it will return it to the pool once it's been garbage collected
 		return new MachineState(contents);
 	}
 }

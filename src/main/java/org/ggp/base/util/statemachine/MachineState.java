@@ -3,6 +3,7 @@ package org.ggp.base.util.statemachine;
 import java.util.HashSet;
 import java.util.Set;
 
+import org.ggp.base.player.gamer.statemachine.thedefeated.SetPool;
 import org.ggp.base.util.gdl.grammar.GdlSentence;
 
 public class MachineState {
@@ -19,6 +20,12 @@ public class MachineState {
     public MachineState(Set<GdlSentence> contents)
     {
         this.contents = contents;
+    }
+
+    @Override
+	public void finalize()
+    {
+    	SetPool.collectSentenceSet(contents);
     }
 
     /**
