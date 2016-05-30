@@ -105,7 +105,7 @@ public class SetPool
 
 		if (proposition == null && canGrow())
 		{
-			allocateComponents(MachineParameters.LOW_NODE_THRESHOLD);
+			allocatePropositions(MachineParameters.LOW_NODE_THRESHOLD);
 			proposition = propositionQueue.poll();
 		}
 
@@ -118,7 +118,7 @@ public class SetPool
 
 		if (sentence == null && canGrow())
 		{
-			allocateComponents(MachineParameters.LOW_NODE_THRESHOLD);
+			allocateSentences(MachineParameters.LOW_NODE_THRESHOLD);
 			sentence = sentenceQueue.poll();
 		}
 
