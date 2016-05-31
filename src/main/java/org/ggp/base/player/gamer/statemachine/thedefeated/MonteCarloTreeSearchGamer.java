@@ -36,8 +36,6 @@ public class MonteCarloTreeSearchGamer extends SampleGamer
 	private ThreadTimer threadTimer = null;
 	private Object lock = null;
 
-	private boolean loop = false;
-
 	static
 	{
 		printParameters();
@@ -154,19 +152,6 @@ public class MonteCarloTreeSearchGamer extends SampleGamer
 			throws TransitionDefinitionException, MoveDefinitionException, GoalDefinitionException
 	{
 		log.info(GLog.MAIN_THREAD_ACTIVITY, GLog.BANNER + " Beginning move selection " + GLog.BANNER);
-
-		while (loop)
-		{
-			try
-			{
-				Thread.sleep(99999999999999L);
-			}
-			catch (InterruptedException e)
-			{
-				// TODO Auto-generated catch block
-				e.printStackTrace();
-			}
-		}
 
 		setTimeout(timeout);
 

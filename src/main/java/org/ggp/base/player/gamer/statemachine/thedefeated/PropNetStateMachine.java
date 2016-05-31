@@ -460,78 +460,81 @@ public class PropNetStateMachine extends AugmentedStateMachine
 		Set<GdlSentence> baseSentences = SetPool.newSentenceSet();
 		Set<GdlSentence> inputSentences = SetPool.newSentenceSet();
 
-		while (!done)
+		if (!ancestors.isEmpty())
 		{
-			// could have made this a proper function but
-			// type erasure for generics prevents us from doing that
-			baseSentences.clear();
-			for (Proposition marking : baseMarkings)
+			while (!done)
 			{
-				baseSentences.add(marking.getName());
-			}
-
-			inputSentences.clear();
-			for (Proposition marking : inputMarkings)
-			{
-				inputSentences.add(marking.getName());
-			}
-
-			if (prop.getValue())
-			{
-				baseSentences.add(prop.getName());
-			}
-
-			propagateMoves(baseSentences, inputSentences);
-
-			if (prop.getValue() != latchType)
-			{
-				SetPool.collectPropositionSet(baseMarkings);
-				SetPool.collectPropositionSet(inputMarkings);
-				SetPool.collectSentenceSet(baseSentences);
-				SetPool.collectSentenceSet(inputSentences);
-				return false;
-			}
-
-			boolean carryOver = true;
-			int i = 0;
-
-			while (carryOver)
-			{
-				Proposition currentProp = props[i];
-				if (!truthValues[i])
+				// could have made this a proper function but
+				// type erasure for generics prevents us from doing that
+				baseSentences.clear();
+				for (Proposition marking : baseMarkings)
 				{
-					truthValues[i] = true;
-
-					if (currentProp.type() == Type.base)
-					{
-						baseMarkings.add(currentProp);
-					}
-					else if (currentProp.type() == Type.input)
-					{
-						inputMarkings.add(currentProp);
-					}
-
-					carryOver = false;
+					baseSentences.add(marking.getName());
 				}
-				else
+
+				inputSentences.clear();
+				for (Proposition marking : inputMarkings)
 				{
-					truthValues[i] = false;
+					inputSentences.add(marking.getName());
+				}
 
-					if (currentProp.type() == Type.base)
-					{
-						baseMarkings.remove(currentProp);
-					}
-					else if (currentProp.type() == Type.input)
-					{
-						inputMarkings.remove(currentProp);
-					}
+				if (prop.getValue())
+				{
+					baseSentences.add(prop.getName());
+				}
 
-					i++;
+				propagateMoves(baseSentences, inputSentences);
 
-					if (i == props.length)
+				if (prop.getValue() != latchType)
+				{
+					SetPool.collectPropositionSet(baseMarkings);
+					SetPool.collectPropositionSet(inputMarkings);
+					SetPool.collectSentenceSet(baseSentences);
+					SetPool.collectSentenceSet(inputSentences);
+					return false;
+				}
+
+				boolean carryOver = true;
+				int i = 0;
+
+				while (carryOver)
+				{
+					Proposition currentProp = props[i];
+					if (!truthValues[i])
 					{
+						truthValues[i] = true;
+
+						if (currentProp.type() == Type.base)
+						{
+							baseMarkings.add(currentProp);
+						}
+						else if (currentProp.type() == Type.input)
+						{
+							inputMarkings.add(currentProp);
+						}
+
 						carryOver = false;
-						done = true;
+					}
+					else
+					{
+						truthValues[i] = false;
+
+						if (currentProp.type() == Type.base)
+						{
+							baseMarkings.remove(currentProp);
+						}
+						else if (currentProp.type() == Type.input)
+						{
+							inputMarkings.remove(currentProp);
+						}
+
+						i++;
+
+						if (i == props.length)
+						{
+							carryOver = false;
+							done = true;
+						}
 					}
 				}
 			}
