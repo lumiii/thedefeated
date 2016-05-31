@@ -8,6 +8,7 @@ import java.util.concurrent.ConcurrentLinkedQueue;
 
 import org.ggp.base.player.gamer.statemachine.thedefeated.GLog;
 import org.ggp.base.player.gamer.statemachine.thedefeated.MachineParameters;
+import org.ggp.base.player.gamer.statemachine.thedefeated.MonteCarloTreeSearchGamer;
 import org.ggp.base.util.statemachine.MachineState;
 import org.ggp.base.util.statemachine.Move;
 
@@ -79,10 +80,30 @@ public class NodePool
 	{
 		Node node = getNode(par, stat, m, playerHasChoice);
 
-		if (node == null && canGrow())
+		if (node == null)
 		{
-			allocateNodes(MachineParameters.LOW_NODE_THRESHOLD);
-			node = getNode(par, stat, m, playerHasChoice);
+			// always allocate more memory if the main thread wants it
+			if (canGrow() ||
+				Thread.currentThread().getName().equals(MonteCarloTreeSearchGamer.MAIN_THREAD_NAME))
+			{
+				allocateNodes(MachineParameters.LOW_NODE_THRESHOLD);
+				node = getNode(par, stat, m, playerHasChoice);
+			}
+			else
+			{
+				while (node == null)
+				{
+					try
+					{
+						Thread.sleep(100);
+					}
+					catch (InterruptedException e)
+					{
+					}
+
+					node = getNode(par, stat, m, playerHasChoice);
+				}
+			}
 		}
 
 		return node;

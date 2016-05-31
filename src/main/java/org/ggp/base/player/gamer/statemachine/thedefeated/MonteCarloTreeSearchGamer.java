@@ -23,6 +23,7 @@ import org.ggp.base.util.statemachine.implementation.prover.ProverStateMachine;
 
 public class MonteCarloTreeSearchGamer extends SampleGamer
 {
+	public static final String MAIN_THREAD_NAME = "MainThread";
 	private static final Logger log = GLog.getLogger(MonteCarloTreeSearchGamer.class);
 	private long endTime = 0;
 
@@ -34,6 +35,8 @@ public class MonteCarloTreeSearchGamer extends SampleGamer
 	private Timer timer = null;
 	private ThreadTimer threadTimer = null;
 	private Object lock = null;
+
+	private boolean loop = false;
 
 	static
 	{
@@ -73,7 +76,9 @@ public class MonteCarloTreeSearchGamer extends SampleGamer
 
 	public MonteCarloTreeSearchGamer()
 	{
-		Thread.currentThread().setPriority(MachineParameters.MAIN_THREAD_PRIORITY);
+		Thread currentThread = Thread.currentThread();
+		currentThread.setPriority(MachineParameters.MAIN_THREAD_PRIORITY);
+		currentThread.setName(MAIN_THREAD_NAME);
 
 		lock = new Object();
 	}
@@ -149,6 +154,19 @@ public class MonteCarloTreeSearchGamer extends SampleGamer
 			throws TransitionDefinitionException, MoveDefinitionException, GoalDefinitionException
 	{
 		log.info(GLog.MAIN_THREAD_ACTIVITY, GLog.BANNER + " Beginning move selection " + GLog.BANNER);
+
+		while (loop)
+		{
+			try
+			{
+				Thread.sleep(99999999999999L);
+			}
+			catch (InterruptedException e)
+			{
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+			}
+		}
 
 		setTimeout(timeout);
 

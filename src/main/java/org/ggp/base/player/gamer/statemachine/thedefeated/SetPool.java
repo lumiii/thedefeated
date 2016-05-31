@@ -90,10 +90,31 @@ public class SetPool
 	{
 		Set<Component> component = componentQueue.poll();
 
-		if (component == null && canGrow())
+		if (component == null)
 		{
-			allocateComponents(MachineParameters.LOW_NODE_THRESHOLD);
-			component = componentQueue.poll();
+			// always allocate more memory if the main thread wants it
+			if (canGrow() ||
+				Thread.currentThread().getName().equals(MonteCarloTreeSearchGamer.MAIN_THREAD_NAME))
+			{
+				allocateComponents(MachineParameters.LOW_NODE_THRESHOLD);
+				component = componentQueue.poll();
+			}
+			else
+			{
+				while (component == null)
+				{
+					try
+					{
+						Thread.sleep(100);
+					}
+					catch (InterruptedException e)
+					{
+					}
+
+					component = componentQueue.poll();
+				}
+			}
+
 		}
 
 		return component;
@@ -103,10 +124,30 @@ public class SetPool
 	{
 		Set<Proposition> proposition = propositionQueue.poll();
 
-		if (proposition == null && canGrow())
+		if (proposition == null)
 		{
-			allocatePropositions(MachineParameters.LOW_NODE_THRESHOLD);
-			proposition = propositionQueue.poll();
+			// always allocate more memory if the main thread wants it
+			if (canGrow() ||
+				Thread.currentThread().getName().equals(MonteCarloTreeSearchGamer.MAIN_THREAD_NAME))
+			{
+				allocatePropositions(MachineParameters.LOW_NODE_THRESHOLD);
+				proposition = propositionQueue.poll();
+			}
+			else
+			{
+				while (proposition == null)
+				{
+					try
+					{
+						Thread.sleep(100);
+					}
+					catch (InterruptedException e)
+					{
+					}
+
+					proposition = propositionQueue.poll();
+				}
+			}
 		}
 
 		return proposition;
@@ -116,10 +157,30 @@ public class SetPool
 	{
 		Set<GdlSentence> sentence = sentenceQueue.poll();
 
-		if (sentence == null && canGrow())
+		if (sentence == null)
 		{
-			allocateSentences(MachineParameters.LOW_NODE_THRESHOLD);
-			sentence = sentenceQueue.poll();
+			// always allocate more memory if the main thread wants it
+			if (canGrow() ||
+				Thread.currentThread().getName().equals(MonteCarloTreeSearchGamer.MAIN_THREAD_NAME))
+			{
+				allocateSentences(MachineParameters.LOW_NODE_THRESHOLD);
+				sentence = sentenceQueue.poll();
+			}
+			else
+			{
+				while (sentence == null)
+				{
+					try
+					{
+						Thread.sleep(100);
+					}
+					catch (InterruptedException e)
+					{
+					}
+
+					sentence = sentenceQueue.poll();
+				}
+			}
 		}
 
 		return sentence;

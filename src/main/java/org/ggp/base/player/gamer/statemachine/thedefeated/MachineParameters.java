@@ -12,7 +12,7 @@ public class MachineParameters
 	public static final int WORKER_THREAD_PRIORITY = MAIN_THREAD_PRIORITY - 1;
 
 	// amount of time to buffer before the timeout
-	public static final long TIME_BUFFER = 2000;
+	public static final long TIME_BUFFER = 3500;
 
 	private static final String OUTPUT_FILE = "D:\\227b\\graph-";
 	private static final String OUTPUT_FILE_EXTENSION = ".dot";
