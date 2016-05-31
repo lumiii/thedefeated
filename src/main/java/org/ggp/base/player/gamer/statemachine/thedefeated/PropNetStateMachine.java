@@ -323,11 +323,14 @@ public class PropNetStateMachine extends AugmentedStateMachine
 			{
 				// these don't change the truth values, and also only have one
 				// parent
-				Component parent = component.getSingleInput();
-				if (!visited.contains(parent))
+				if(component.getInputs().size()!=0)
 				{
-					Entry<Component, Boolean> parentEntry = new SimpleImmutableEntry<>(parent, inhibitingValue);
-					ancestors.add(parentEntry);
+					Component parent = component.getSingleInput();
+					if (!visited.contains(parent))
+					{
+						Entry<Component, Boolean> parentEntry = new SimpleImmutableEntry<>(parent, inhibitingValue);
+						ancestors.add(parentEntry);
+					}
 				}
 
 				break;

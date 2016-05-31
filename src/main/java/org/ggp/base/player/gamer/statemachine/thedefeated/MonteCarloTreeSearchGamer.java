@@ -109,6 +109,7 @@ public class MonteCarloTreeSearchGamer extends SampleGamer
 		childStates.clear();
 
 		TreeSearchWorker.printStats();
+		System.gc();
 	}
 
 	@Override
