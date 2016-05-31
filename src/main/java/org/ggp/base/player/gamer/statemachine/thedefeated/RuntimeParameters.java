@@ -2,7 +2,7 @@ package org.ggp.base.player.gamer.statemachine.thedefeated;
 
 public class RuntimeParameters
 {
-	public static final int EXPLORATION_FACTOR = 50;
+	public static final int EXPLORATION_FACTOR = 90;
 	public static final int DEPTH_CHARGE_COUNT = 4;
 
 	public static final int MAX_LATCH_ANCESTOR = 10;
