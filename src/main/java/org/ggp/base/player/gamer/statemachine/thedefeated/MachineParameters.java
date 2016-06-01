@@ -4,8 +4,8 @@ import java.util.Date;
 
 public class MachineParameters
 {
-	public static final int GAME_THREADS = NUM_CORES + 2;
-	public static final int MAX_NODES = 500000;
+	public static final int NUM_CORES = 1;
+	public static final int MAX_NODES = 75000;
 	public static final int LOW_NODE_THRESHOLD = 5000;
 
 	public static final int MAIN_THREAD_PRIORITY = Thread.MAX_PRIORITY;

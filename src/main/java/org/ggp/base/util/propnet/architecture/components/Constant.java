@@ -57,9 +57,9 @@ public final class Constant extends Component
 	@Override
 	public void setPropagated()
 	{
-		if (!propagatedOnce())
+		if (!propagatedOnce)
 		{
-			propagatedOnce(true);
+			propagatedOnce = true;
 		}
 	}
 
@@ -67,7 +67,7 @@ public final class Constant extends Component
 	public boolean shouldPropagate()
 	{
 		// the value of this will never change, just pivot on whether it's been ever used once
-		return !propagatedOnce();
+		return !propagatedOnce;
 	}
 
 	@Override
@@ -75,4 +75,6 @@ public final class Constant extends Component
 	{
 		// nothing to do
 	}
+
+
 }

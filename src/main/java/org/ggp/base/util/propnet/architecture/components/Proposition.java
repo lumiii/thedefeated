@@ -1,9 +1,5 @@
 package org.ggp.base.util.propnet.architecture.components;
 
-import java.util.Arrays;
-
-import org.ggp.base.player.gamer.statemachine.thedefeated.MachineParameters;
-import org.ggp.base.player.gamer.statemachine.thedefeated.ThreadID;
 import org.ggp.base.util.gdl.grammar.GdlSentence;
 import org.ggp.base.util.propnet.architecture.Component;
 
@@ -16,7 +12,7 @@ public final class Proposition extends Component
     /** The name of the Proposition. */
     private GdlSentence name;
     /** The value of the Proposition. */
-    private boolean[] valueArray = new boolean[MachineParameters.GAME_THREADS];
+    private boolean value;
 
     /**
      * Creates a new Proposition with name <tt>name</tt>.
@@ -27,7 +23,7 @@ public final class Proposition extends Component
     public Proposition(GdlSentence name)
     {
         this.name = name;
-        Arrays.fill(valueArray, false);
+        this.value = false;
     }
 
     /**
@@ -59,7 +55,7 @@ public final class Proposition extends Component
     @Override
     public boolean getValue()
     {
-        return value();
+        return value;
     }
 
     // functionally the same as setValueFromParent
@@ -67,12 +63,12 @@ public final class Proposition extends Component
     // outside of propagation
     public void markValue(boolean value)
     {
-    	this.value(value);
+    	this.value = value;
     }
 
     public void ensurePropagate()
     {
-    	this.propagatedValue(!value());
+    	this.propagatedValue = !value;
     }
 
     /**
@@ -85,7 +81,7 @@ public final class Proposition extends Component
     @Override
 	public void setValueFromParent(boolean value)
     {
-    	this.value(value);
+    	this.value = value;
     }
 
     /**
@@ -95,7 +91,7 @@ public final class Proposition extends Component
     public String toString()
     {
     	//return name.toString();
-        return toDot("circle", value() ? "red" : "white", name.toString());
+        return toDot("circle", value ? "red" : "white", name.toString());
     }
 
     @Override
@@ -113,16 +109,6 @@ public final class Proposition extends Component
 	@Override
 	public void resetState()
 	{
-		value(false);
-	}
-
-	private boolean value()
-	{
-		return valueArray[ThreadID.get()];
-	}
-
-	private void value(boolean value)
-	{
-		valueArray[ThreadID.get()] = value;
+		value = false;
 	}
 }

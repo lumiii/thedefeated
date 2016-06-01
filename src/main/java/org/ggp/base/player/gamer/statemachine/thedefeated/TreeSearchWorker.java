@@ -42,7 +42,6 @@ public class TreeSearchWorker implements Runnable
 
 	public TreeSearchWorker(int id, ThreadManager manager)
 	{
-		ThreadID.initializeThreadID();
 		this.id = id;
 		this.manager = manager;
 	}
@@ -352,7 +351,7 @@ public class TreeSearchWorker implements Runnable
 			}
 
 			return (node.utility() / node.visit()
-					+ (RuntimeParameters.EXPLORATION_FACTOR + Math.exp(-parentVisit/100) + 10) * Math.sqrt(2 * Math.log(parentVisit) / node.visit()));
+					+ (RuntimeParameters.EXPLORATION_FACTOR + Math.exp(-node.parent().visit()/100) + 10) * Math.sqrt(2 * Math.log(parentVisit) / node.visit()));
 		}
 	}
 }

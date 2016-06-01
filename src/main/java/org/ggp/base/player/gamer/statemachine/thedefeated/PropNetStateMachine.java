@@ -41,10 +41,10 @@ public class PropNetStateMachine extends AugmentedStateMachine
 	/** The player roles */
 	private List<Role> roles;
 
-	private List<Set<Proposition>> trueBasePropsArray = new ArrayList<Set<Proposition>>(MachineParameters.GAME_THREADS);
-	private List<Set<Proposition>> trueInputPropsArray = new ArrayList<Set<Proposition>>(MachineParameters.GAME_THREADS);
-	private List<Set<Proposition>> changedBasePropsArray = new ArrayList<Set<Proposition>>(MachineParameters.GAME_THREADS);
-
+	private Set<Proposition> trueBaseProps = Collections.newSetFromMap(new ConcurrentHashMap<Proposition, Boolean>());
+	private Set<Proposition> trueInputProps = Collections.newSetFromMap(new ConcurrentHashMap<Proposition, Boolean>());
+	private Set<Proposition> changedBaseProps = Collections
+			.newSetFromMap(new ConcurrentHashMap<Proposition, Boolean>());
 	private Set<Component> startingComponents = SetPool.newComponentSet();
 
 	private Set<GdlSentence> trueLatches = null;
@@ -77,13 +77,6 @@ public class PropNetStateMachine extends AugmentedStateMachine
 			}
 
 			roles = propNet.getRoles();
-
-			for (int i = 0; i < MachineParameters.GAME_THREADS; i++)
-			{
-				trueBasePropsArray.add(Collections.newSetFromMap(new ConcurrentHashMap<Proposition, Boolean>()));
-				trueInputPropsArray.add(Collections.newSetFromMap(new ConcurrentHashMap<Proposition, Boolean>()));
-				changedBasePropsArray.add(Collections.newSetFromMap(new ConcurrentHashMap<Proposition, Boolean>()));
-			}
 		}
 		catch (InterruptedException e)
 		{
@@ -196,7 +189,7 @@ public class PropNetStateMachine extends AugmentedStateMachine
 		if (goals.size() > 1)
 		{
 			// sort it in ascending order
-			//goals.sort(ScoreComparator.comparator);
+			goals.sort(ScoreComparator.comparator);
 		}
 
 		Map<Proposition, Boolean> inhibitors = findInhibitorForGoal(goals);
@@ -576,7 +569,6 @@ public class PropNetStateMachine extends AugmentedStateMachine
 
 	private void markBaseProps(Set<GdlSentence> stateSentences)
 	{
-		Set<Proposition> changedBaseProps = changedBaseProps();
 		changedBaseProps.clear();
 
 		for (Map.Entry<GdlSentence, Proposition> entry : propNet.getBasePropositions().entrySet())
@@ -663,7 +655,7 @@ public class PropNetStateMachine extends AugmentedStateMachine
 		// value for that iteration
 		// of propagation. for performance, update only the base props that we
 		// manually toggled
-		for (Proposition p : changedBaseProps())
+		for (Proposition p : changedBaseProps)
 		{
 			boolean transitionValue = p.getSingleInput().getValue();
 			boolean value = p.getValue();
@@ -682,7 +674,6 @@ public class PropNetStateMachine extends AugmentedStateMachine
 		if (component.type() == Type.base)
 		{
 			Proposition prop = (Proposition) component;
-			Set<Proposition> trueBaseProps = trueBaseProps();
 			if (value)
 			{
 				if (!trueBaseProps.contains(prop))
@@ -700,7 +691,6 @@ public class PropNetStateMachine extends AugmentedStateMachine
 		}
 		else if (component.type() == Type.input)
 		{
-			Set<Proposition> trueInputProps = trueInputProps();
 			Proposition prop = (Proposition) component;
 			if (value)
 			{
@@ -726,11 +716,14 @@ public class PropNetStateMachine extends AugmentedStateMachine
 	@Override
 	public boolean isTerminal(MachineState state)
 	{
-		propagateMoves(state.getContents());
+		synchronized (this)
+		{
+			propagateMoves(state.getContents());
 
-		boolean terminal = propNet.getTerminalProposition().getValue();
+			boolean terminal = propNet.getTerminalProposition().getValue();
 
-		return terminal;
+			return terminal;
+		}
 	}
 
 	/**
@@ -742,35 +735,38 @@ public class PropNetStateMachine extends AugmentedStateMachine
 	@Override
 	public int getGoal(MachineState state, Role role) throws GoalDefinitionException
 	{
-		propagateMoves(state.getContents());
-
-		Set<Proposition> goals = propNet.getGoalPropositions().get(role);
-
-		int goalValue = 0;
-		boolean hasSingleGoal = false;
-
-		for (Proposition goal : goals)
+		synchronized (this)
 		{
-			if (goal.getValue())
+			propagateMoves(state.getContents());
+
+			Set<Proposition> goals = propNet.getGoalPropositions().get(role);
+
+			int goalValue = 0;
+			boolean hasSingleGoal = false;
+
+			for (Proposition goal : goals)
 			{
-				if (hasSingleGoal)
+				if (goal.getValue())
 				{
-					log.error(GLog.ERRORS, "Found multiple goals");
-					throw new GoalDefinitionException(state, role);
+					if (hasSingleGoal)
+					{
+						log.error(GLog.ERRORS, "Found multiple goals");
+						throw new GoalDefinitionException(state, role);
+					}
+
+					goalValue = getGoalValue(goal);
+					hasSingleGoal = true;
 				}
-
-				goalValue = getGoalValue(goal);
-				hasSingleGoal = true;
 			}
-		}
 
-		if (!hasSingleGoal)
-		{
-			log.error(GLog.ERRORS, "Found no goals");
-			throw new GoalDefinitionException(state, role);
-		}
+			if (!hasSingleGoal)
+			{
+				log.error(GLog.ERRORS, "Found no goals");
+				throw new GoalDefinitionException(state, role);
+			}
 
-		return goalValue;
+			return goalValue;
+		}
 	}
 
 	/**
@@ -781,14 +777,17 @@ public class PropNetStateMachine extends AugmentedStateMachine
 	@Override
 	public MachineState getInitialState()
 	{
-		List<Proposition> list = Collections.singletonList(propNet.getInitProposition());
+		synchronized (this)
+		{
+			List<Proposition> list = Collections.singletonList(propNet.getInitProposition());
 
-		Set<GdlSentence> emptySet = Collections.emptySet();
-		MachineState nextState = getNextState(emptySet, emptySet, list);
+			Set<GdlSentence> emptySet = Collections.emptySet();
+			MachineState nextState = getNextState(emptySet, emptySet, list);
 
-		propNet.getInitProposition().setValueFromParent(false);
+			propNet.getInitProposition().setValueFromParent(false);
 
-		return nextState;
+			return nextState;
+		}
 	}
 
 	/**
@@ -807,20 +806,23 @@ public class PropNetStateMachine extends AugmentedStateMachine
 	@Override
 	public List<Move> getLegalMoves(MachineState state, Role role) throws MoveDefinitionException
 	{
-		propagateMoves(state.getContents());
-
-		Map<Role, Set<Proposition>> legals = propNet.getLegalPropositions();
-
-		List<Move> m = new ArrayList<Move>();
-		for (Proposition p : legals.get(role))
+		synchronized (this)
 		{
-			if (p.getValue())
-			{
-				m.add(getMoveFromProposition(p));
-			}
-		}
+			propagateMoves(state.getContents());
 
-		return m;
+			Map<Role, Set<Proposition>> legals = propNet.getLegalPropositions();
+
+			List<Move> m = new ArrayList<Move>();
+			for (Proposition p : legals.get(role))
+			{
+				if (p.getValue())
+				{
+					m.add(getMoveFromProposition(p));
+				}
+			}
+
+			return m;
+		}
 	}
 
 	private void propagateMoves(Set<GdlSentence> baseSentences)
@@ -875,15 +877,18 @@ public class PropNetStateMachine extends AugmentedStateMachine
 	@Override
 	public MachineState getNextState(MachineState state, List<Move> moves) throws TransitionDefinitionException
 	{
-		Set<GdlSentence> baseSentences = state.getContents();
+		synchronized (this)
+		{
+			Set<GdlSentence> baseSentences = state.getContents();
 
-		Set<GdlSentence> inputSentences = SetPool.newSentenceSet();
-		inputSentences = toDoes(moves, inputSentences);
+			Set<GdlSentence> inputSentences = SetPool.newSentenceSet();
+			inputSentences = toDoes(moves, inputSentences);
 
-		MachineState nextState = getNextState(baseSentences, inputSentences);
+			MachineState nextState = getNextState(baseSentences, inputSentences);
 
-		SetPool.collectSentenceSet(inputSentences);
-		return nextState;
+			SetPool.collectSentenceSet(inputSentences);
+			return nextState;
+		}
 	}
 
 	/* Already implemented for you */
@@ -971,28 +976,16 @@ public class PropNetStateMachine extends AugmentedStateMachine
 	{
 		Set<GdlSentence> contents = SetPool.newSentenceSet();
 
-		for (Proposition p : trueBaseProps())
+		synchronized (this)
 		{
-			contents.add(p.getName());
+			for (Proposition p : trueBaseProps)
+			{
+				contents.add(p.getName());
+			}
 		}
 
 		// don't return the pool, machinestate has ownership
 		// it will return it to the pool once it's been garbage collected
 		return new MachineState(contents);
-	}
-
-	private Set<Proposition> trueBaseProps()
-	{
-		return trueBasePropsArray.get(ThreadID.get());
-	}
-
-	private Set<Proposition> trueInputProps()
-	{
-		return trueInputPropsArray.get(ThreadID.get());
-	}
-
-	private Set<Proposition> changedBaseProps()
-	{
-		return changedBasePropsArray.get(ThreadID.get());
 	}
 }
