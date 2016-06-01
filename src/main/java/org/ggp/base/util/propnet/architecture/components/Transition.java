@@ -1,5 +1,9 @@
 package org.ggp.base.util.propnet.architecture.components;
 
+import java.util.Arrays;
+
+import org.ggp.base.player.gamer.statemachine.thedefeated.MachineParameters;
+import org.ggp.base.player.gamer.statemachine.thedefeated.ThreadID;
 import org.ggp.base.util.propnet.architecture.Component;
 
 /**
@@ -8,7 +12,13 @@ import org.ggp.base.util.propnet.architecture.Component;
 @SuppressWarnings("serial")
 public final class Transition extends Component
 {
-	private boolean value = false;
+	private boolean[] valueArray = new boolean[MachineParameters.GAME_THREADS];
+
+	public Transition()
+	{
+		Arrays.fill(valueArray, false);
+	}
+
     /**
      * Returns the value of the input to the transition.
      *
@@ -17,13 +27,13 @@ public final class Transition extends Component
     @Override
     public boolean getValue()
     {
-        return value;
+        return value();
     }
 
     @Override
 	public void setValueFromParent(boolean value)
     {
-    	this.value = value;
+    	this.value(value);
     }
 
     /**
@@ -44,6 +54,16 @@ public final class Transition extends Component
 	@Override
 	public void resetState()
 	{
-		value = false;
+		value(false);
+	}
+
+	private boolean value()
+	{
+		return valueArray[ThreadID.get()];
+	}
+
+	private void value(boolean value)
+	{
+		valueArray[ThreadID.get()] = value;
 	}
 }

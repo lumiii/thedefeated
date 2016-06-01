@@ -1,5 +1,9 @@
 package org.ggp.base.util.propnet.architecture.components;
 
+import java.util.Arrays;
+
+import org.ggp.base.player.gamer.statemachine.thedefeated.MachineParameters;
+import org.ggp.base.player.gamer.statemachine.thedefeated.ThreadID;
 import org.ggp.base.util.propnet.architecture.Component;
 
 /**
@@ -8,7 +12,13 @@ import org.ggp.base.util.propnet.architecture.Component;
 @SuppressWarnings("serial")
 public final class Not extends Component
 {
-	private boolean value = false;
+	private boolean[] valueArray = new boolean[MachineParameters.GAME_THREADS];
+
+	public Not()
+	{
+		Arrays.fill(valueArray, false);
+	}
+
     /**
      * Returns the inverse of the input to the not.
      *
@@ -17,7 +27,7 @@ public final class Not extends Component
     @Override
     public boolean getValue()
     {
-        return value;
+        return value();
     }
 
     /**
@@ -39,12 +49,22 @@ public final class Not extends Component
 	public void setValueFromParent(boolean value)
 	{
 		// inverting parent's value
-		this.value = !value;
+		this.value(!value);
 	}
 
 	@Override
 	public void resetState()
 	{
-		value = false;
+		value(false);
+	}
+
+	private boolean value()
+	{
+		return valueArray[ThreadID.get()];
+	}
+
+	private void value(boolean value)
+	{
+		valueArray[ThreadID.get()] = value;
 	}
 }

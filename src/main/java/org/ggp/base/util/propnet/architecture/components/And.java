@@ -1,6 +1,10 @@
 package org.ggp.base.util.propnet.architecture.components;
 
+import java.util.Arrays;
+
 import org.ggp.base.player.gamer.statemachine.thedefeated.GLog;
+import org.ggp.base.player.gamer.statemachine.thedefeated.MachineParameters;
+import org.ggp.base.player.gamer.statemachine.thedefeated.ThreadID;
 import org.ggp.base.util.propnet.architecture.Component;
 
 /**
@@ -9,7 +13,12 @@ import org.ggp.base.util.propnet.architecture.Component;
 @SuppressWarnings("serial")
 public final class And extends Component
 {
-	private int numTrue = 0;
+	private int[] numTrueArray = new int[MachineParameters.GAME_THREADS];
+
+	public And()
+	{
+		Arrays.fill(numTrueArray, 0);
+	}
 
     /**
      * Returns true if and only if every input to the and is true.
@@ -19,7 +28,7 @@ public final class And extends Component
     @Override
     public boolean getValue()
     {
-    	return numTrue == getInputs().size();
+    	return numTrue() == getInputs().size();
     }
 
     /**
@@ -45,14 +54,16 @@ public final class And extends Component
 		// keep an eye out for errors in AND/OR gates
 		if (value)
 		{
-			numTrue++;
+			numTrueIncrement();
 		}
 		else
 		{
-			numTrue--;
+			numTrueDecrement();
 		}
 
-		if (numTrue < 0 || numTrue > getInputs().size())
+		int val = numTrue();
+
+		if (val < 0 || val > getInputs().size())
 		{
 			GLog.getRootLogger().error(GLog.PROPNET,
 					"AND gate counting invariant violated!");
@@ -66,7 +77,7 @@ public final class And extends Component
 		{
 			if (value)
 			{
-				numTrue++;
+				numTrueIncrement();
 			}
 		}
 		else
@@ -78,6 +89,26 @@ public final class And extends Component
 	@Override
 	public void resetState()
 	{
-		numTrue = 0;
+		numTrue(0);
+	}
+
+	private int numTrue()
+	{
+		return numTrueArray[ThreadID.get()];
+	}
+
+	private void numTrue(int value)
+	{
+		numTrueArray[ThreadID.get()] = value;
+	}
+
+	private void numTrueIncrement()
+	{
+		numTrueArray[ThreadID.get()]++;
+	}
+
+	private void numTrueDecrement()
+	{
+		numTrueArray[ThreadID.get()]--;
 	}
 }

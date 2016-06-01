@@ -74,9 +74,7 @@ public class MonteCarloTreeSearchGamer extends SampleGamer
 
 	public MonteCarloTreeSearchGamer()
 	{
-		Thread currentThread = Thread.currentThread();
-		currentThread.setPriority(MachineParameters.MAIN_THREAD_PRIORITY);
-		currentThread.setName(MAIN_THREAD_NAME);
+		Thread.currentThread().setPriority(MachineParameters.MAIN_THREAD_PRIORITY);
 
 		lock = new Object();
 	}
@@ -119,6 +117,8 @@ public class MonteCarloTreeSearchGamer extends SampleGamer
 	public void stateMachineMetaGame(long timeout)
 			throws TransitionDefinitionException, MoveDefinitionException, GoalDefinitionException
 	{
+		ThreadID.initializeThreadID();
+
 		log.info(GLog.MAIN_THREAD_ACTIVITY, GLog.BANNER + " Beginning meta game " + GLog.BANNER);
 		setTimeout(timeout);
 

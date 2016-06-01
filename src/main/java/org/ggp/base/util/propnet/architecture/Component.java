@@ -1,10 +1,13 @@
 package org.ggp.base.util.propnet.architecture;
 
 import java.io.Serializable;
+import java.util.Arrays;
 import java.util.HashSet;
 import java.util.Set;
 
+import org.ggp.base.player.gamer.statemachine.thedefeated.MachineParameters;
 import org.ggp.base.player.gamer.statemachine.thedefeated.RuntimeParameters;
+import org.ggp.base.player.gamer.statemachine.thedefeated.ThreadID;
 import org.ggp.base.util.propnet.architecture.components.Proposition;
 
 /**
@@ -36,12 +39,10 @@ public abstract class Component implements Serializable
     /** The outputs of the component. */
     private final Set<Component> outputs;
 
-    private int order;
-
     protected Type type;
 
-    protected boolean propagatedOnce = false;
-    protected boolean propagatedValue = false;
+    protected boolean[] propagatedOnceArray = new boolean[MachineParameters.GAME_THREADS];
+    protected boolean[] propagatedValueArray = new boolean[MachineParameters.GAME_THREADS];
 
     /**
      * Creates a new Component with no inputs or outputs.
@@ -50,7 +51,9 @@ public abstract class Component implements Serializable
     {
         this.inputs = new HashSet<Component>();
         this.outputs = new HashSet<Component>();
-        this.order = -1;
+
+        Arrays.fill(propagatedOnceArray, false);
+        Arrays.fill(propagatedValueArray, false);
     }
 
     /**
@@ -83,27 +86,6 @@ public abstract class Component implements Serializable
     {
         outputs.clear();
     }
-
-    public void setOrder(int order)
-    {
-    	if (order < 0)
-    	{
-    		throw new IllegalArgumentException();
-    	}
-
-    	this.order = order;
-    }
-
-    public int getOrder()
-    {
-    	return order;
-    }
-
-    public boolean hasOrder()
-    {
-    	return (order != -1);
-    }
-
 
     /**
      * Adds a new output.
@@ -180,27 +162,49 @@ public abstract class Component implements Serializable
     // call this function whenever this component's value is propagated to its children
     public void setPropagated()
     {
-    	if (!propagatedOnce)
+    	if (!propagatedOnce())
     	{
-    		propagatedOnce = true;
+    		propagatedOnce(true);
     	}
 
-    	propagatedValue = getValue();
+    	propagatedValue(getValue());
     }
 
     public void unsetPropagated()
     {
     	// just a debug function
     	// use this to ensure this node propagates forwards
-    	propagatedOnce = false;
+    	propagatedOnce(false);
     }
+
+    protected boolean propagatedOnce()
+    {
+    	return propagatedOnceArray[ThreadID.get()];
+    }
+
+    protected void propagatedOnce(boolean value)
+    {
+    	propagatedOnceArray[ThreadID.get()] = value;
+    }
+
+    protected boolean propagatedValue()
+    {
+    	return propagatedValueArray[ThreadID.get()];
+    }
+
+    protected void propagatedValue(boolean value)
+    {
+    	propagatedValueArray[ThreadID.get()] = value;
+    }
+
+
 
     public abstract void resetState();
 
     public void reset()
     {
-    	propagatedOnce = false;
-    	propagatedValue = false;
+    	propagatedOnce(false);
+    	propagatedValue(false);
     	resetState();
     }
 
@@ -209,12 +213,12 @@ public abstract class Component implements Serializable
     public boolean shouldPropagate()
     {
     	boolean currentValue = getValue();
-    	return (propagatedValue != currentValue) || !propagatedOnce;
+    	return (propagatedValue() != currentValue) || !propagatedOnce();
     }
 
     public boolean hasPropagatedOnce()
     {
-    	return propagatedOnce;
+    	return propagatedOnce();
     }
 
     /**
